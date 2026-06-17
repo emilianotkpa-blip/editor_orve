@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { useLandingStore } from '../../store/useLandingStore'
 import type { Geometry, LandingElemento } from '../../types/landing'
-import { apiUploadImage } from '../../api/webhooks'
+import { apiUploadImage, apiCheckSlug } from '../../api/webhooks'
+import { slugify } from '../../lib/layout'
 import { validateImageFile, compressImage, resolveSrc, ALLOWED_IMAGE_TYPES, ALLOWED_LABEL } from '../../lib/images'
 import { FONTS, FONT_CATEGORY_LABEL, fontStack, loadFont } from '../../lib/fonts'
 import { DEFAULT_SOMBRA } from '../../lib/effects'
@@ -1090,6 +1091,64 @@ function MiniBtn({ children, title, danger, disabled, onClick }: { children: Rea
   )
 }
 
+// Editable public slug with live availability check + uniqueness.
+function SlugField() {
+  const { config, email, setSlug } = useLandingStore()
+  const slug = config.slug || ''
+  const [status, setStatus] = useState<'idle' | 'checking' | 'free' | 'taken' | 'empty'>('idle')
+
+  // debounced availability check whenever the slug changes
+  useEffect(() => {
+    if (!slug) { setStatus('empty'); return }
+    setStatus('checking')
+    let cancelled = false
+    const t = setTimeout(async () => {
+      const res = await apiCheckSlug(slug, email)
+      if (!cancelled) setStatus(res.disponible ? 'free' : 'taken')
+    }, 450)
+    return () => { cancelled = true; clearTimeout(t) }
+  }, [slug, email])
+
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const color = status === 'free' ? '#38D030' : status === 'taken' ? '#FF6B6B' : '#6C7278'
+  const msg =
+    status === 'checking' ? 'Verificando…' :
+    status === 'free'     ? 'Disponible ✓' :
+    status === 'taken'    ? 'Ya está en uso, elige otro ✗' :
+    status === 'empty'    ? 'Escribe tu enlace' : ''
+
+  return (
+    <div>
+      <div style={{ fontSize: 10, color: 'var(--ed-text-3)', fontWeight: 700, marginBottom: 3 }}>Identificador (slug)</div>
+      <div style={{ display: 'flex', alignItems: 'center', background: 'var(--ed-input)', border: `1px solid ${status === 'taken' ? 'rgba(255,107,107,.5)' : 'var(--ed-border-2)'}`, borderRadius: 6, overflow: 'hidden' }}>
+        <span style={{ fontSize: 11, color: 'var(--ed-text-3)', padding: '0 0 0 8px', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>/u/</span>
+        <input
+          type="text"
+          value={slug}
+          placeholder="tu-nombre"
+          onChange={(e) => setSlug(e.target.value)}
+          onBlur={(e) => setSlug(slugify(e.target.value))}
+          onKeyDown={(e) => e.stopPropagation()}
+          style={{
+            flex: 1, background: 'transparent', border: 'none',
+            padding: '6px 8px 6px 1px', fontSize: 12, color: 'var(--ed-text)',
+            fontFamily: 'monospace', outline: 'none', boxSizing: 'border-box', minWidth: 0,
+          }}
+        />
+      </div>
+      <div style={{ fontSize: 10, fontWeight: 700, color, marginTop: 5 }}>{msg}</div>
+      {slug && (
+        <div style={{ fontSize: 10, color: 'var(--ed-text-3)', marginTop: 4, wordBreak: 'break-all', lineHeight: 1.4 }}>
+          {origin}/u/{slug}
+        </div>
+      )}
+      <div style={{ fontSize: 10, color: 'var(--ed-text-3)', marginTop: 6, lineHeight: 1.4 }}>
+        Se guarda al pulsar <b style={{ color: 'var(--ed-text-2)' }}>Guardar</b>. Si otro asesor ya lo tomó, no podrás usarlo.
+      </div>
+    </div>
+  )
+}
+
 // ── page inspector (global page properties) ─────────────────────────────────
 
 function PageInspector() {
@@ -1111,6 +1170,12 @@ function PageInspector() {
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px' }}>
+        <Section title="Tu enlace (URL)">
+          <SlugField />
+        </Section>
+
+        <Divider />
+
         <Section title="Ancho de la landing">
           <SelectInput
             label="Modo"

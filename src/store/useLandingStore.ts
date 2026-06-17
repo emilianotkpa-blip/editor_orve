@@ -3,6 +3,7 @@ import type { LandingConfig, LandingElemento, Geometry, Viewport, ElementoTipo, 
 import { DEFAULT_CONFIG, createDefaultElement, createDefaultSection, cloneSection } from '../types/landing'
 import { apiLoadLanding, apiSaveLanding, apiSignedUrls } from '../api/webhooks'
 import { isDisplayableUrl } from '../lib/images'
+import { softSlugify } from '../lib/layout'
 
 // Collect every storage path referenced by image / gallery elements that still
 // needs signing (i.e. not already an http/blob/data URL).
@@ -162,6 +163,7 @@ interface LandingStore {
   setActiveTool: (tool: ActiveTool) => void
   setActiveSection: (id: string | null) => void
   setEditingPage: (v: boolean) => void
+  setSlug: (slug: string) => void
   setPagina: (patch: Partial<NonNullable<LandingConfig['pagina']>>) => void
   mergeSignedUrls: (map: Record<string, string>) => void
   resolveSignedUrls: () => Promise<void>
@@ -318,6 +320,14 @@ export const useLandingStore = create<LandingStore>((set, get) => {
   setActiveSection: (activeSectionId) => set({ activeSectionId, editingPage: false }),
   setEditingPage: (editingPage) =>
     set(editingPage ? { editingPage, selectedElementId: null, selectedIds: [], liveGeo: null } : { editingPage }),
+
+  setSlug: (slug) => {
+    record('slug')
+    set((state) => ({
+      config: { ...state.config, slug: softSlugify(slug) },
+      isDirty: true, saveStatus: 'unsaved' as const,
+    }))
+  },
 
   setPagina: (patch) => {
     record('pagina')
@@ -813,7 +823,7 @@ export const useLandingStore = create<LandingStore>((set, get) => {
         return true
       }
       set({ isSaving: false, saveStatus: 'error' })
-      get().showToast('error', 'No se pudo guardar. Intenta de nuevo.')
+      get().showToast('error', res?.error || 'No se pudo guardar. Intenta de nuevo.')
       return false
     } catch {
       set({ isSaving: false, saveStatus: 'error' })
@@ -838,7 +848,7 @@ export const useLandingStore = create<LandingStore>((set, get) => {
       }
       // revert publish flag on failure
       set((s) => ({ config: { ...s.config, publicada: prev }, isPublishing: false, isSaving: false, saveStatus: 'error' }))
-      get().showToast('error', 'No se pudo publicar. Intenta de nuevo.')
+      get().showToast('error', res?.error || 'No se pudo publicar. Intenta de nuevo.')
       return false
     } catch {
       set((s) => ({ config: { ...s.config, publicada: prev }, isPublishing: false, isSaving: false, saveStatus: 'error' }))

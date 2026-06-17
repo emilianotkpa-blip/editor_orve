@@ -17,13 +17,28 @@ export async function apiLoadLanding(email: string): Promise<{ existe: boolean; 
   return res.json()
 }
 
-export async function apiSaveLanding(email: string, config: LandingConfig): Promise<{ ok: boolean; accion?: string }> {
+export async function apiSaveLanding(email: string, config: LandingConfig): Promise<{ ok: boolean; accion?: string; error?: string }> {
   const res = await fetch(`${BASE}/dvd-landing-guardar`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ email, config }),
   })
   return res.json()
+}
+
+// Check whether a slug is free (not taken by a different advisor).
+export async function apiCheckSlug(slug: string, email: string): Promise<{ slug: string; disponible: boolean }> {
+  try {
+    const res = await fetch(`${BASE}/dvd-landing-slug-check`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ slug, email }),
+    })
+    if (!res.ok) return { slug, disponible: false }
+    return res.json()
+  } catch {
+    return { slug, disponible: false }
+  }
 }
 
 export interface PublicLandingResponse {
