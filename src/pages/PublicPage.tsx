@@ -5,6 +5,7 @@ import type { LandingConfig } from '../types/landing'
 import { STAGE_W } from '../lib/layout'
 import { sectionFondoLayer } from '../lib/sections'
 import { BackgroundLayer } from '../components/shared/BackgroundLayer'
+import { OrveMark, DiamondMark } from '../components/shared/Brand'
 import { resolveSrc } from '../lib/images'
 
 type Status = 'loading' | 'ready' | 'unavailable'
@@ -188,26 +189,17 @@ function UnavailableScreen({ slug }: { slug: string }) {
       fontFamily: 'Mulish, sans-serif',
     }}>
       <div style={{ textAlign: 'center', padding: '40px 24px' }}>
-        {/* ORVE diamond */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, marginBottom: 40 }}>
-          <div style={{
-            width: 44, height: 44,
-            background: '#38D030',
-            transform: 'rotate(45deg)',
-            borderRadius: 10,
-            flexShrink: 0,
-            boxShadow: '0 0 28px rgba(56,208,48,.18)',
-          }} />
-          <span style={{ fontSize: 26, fontWeight: 900, color: '#ECEEEF', letterSpacing: '1.5px' }}>
+        {/* ORVE logo */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 40 }}>
+          <OrveMark size={52} />
+          <span style={{ fontSize: 30, fontWeight: 900, color: '#ECEEEF', letterSpacing: '1.5px' }}>
             ORVE
           </span>
         </div>
 
-        <div style={{
-          fontSize: 44, marginBottom: 20,
-          filter: 'grayscale(1)', opacity: .5,
-          lineHeight: 1,
-        }}>💎</div>
+        <div style={{ marginBottom: 20, opacity: .55, display: 'flex', justifyContent: 'center' }}>
+          <DiamondMark size={46} color="#5A5F63" facet="#0A0A0A" facetOpacity={0.6} />
+        </div>
 
         <div style={{ fontSize: 22, fontWeight: 900, color: '#ECEEEF', marginBottom: 8 }}>
           Perfil no disponible
