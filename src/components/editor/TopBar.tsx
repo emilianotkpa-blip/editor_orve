@@ -45,10 +45,10 @@ export function TopBar() {
     }}>
       {/* left: logo + breadcrumb + status */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-          <OrveMark size={36} />
-          <span style={{ fontSize: 18, fontWeight: 900, letterSpacing: '1.1px', color: 'var(--ed-text)' }}>ORVE</span>
-          <DiamondMark size={22} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+          <OrveMark size={43} />
+          <span style={{ fontSize: 22, fontWeight: 900, letterSpacing: '1.1px', color: 'var(--ed-text)' }}>ORVE</span>
+          <DiamondMark size={26} />
         </div>
         <span style={{ width: 1, height: 22, background: 'var(--ed-border-2)' }} />
         <span style={{ color: 'var(--ed-text)', fontWeight: 800, fontSize: 13 }}>Mi Landing</span>
