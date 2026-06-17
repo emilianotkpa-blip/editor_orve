@@ -1,0 +1,94 @@
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+/* ── editor theme tokens (tool chrome only, not the landing content) ── */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --ed-canvas:   #0F0F0F;
+  --ed-panel:    #161616;
+  --ed-bar:      #1B1B1B;
+  --ed-border:   #242424;
+  --ed-border-2: #2B2B2B;
+  --ed-text:     #ECEEEF;
+  --ed-text-2:   #9AA0A6;
+  --ed-text-3:   #6C7278;
+  --ed-input:    #1A1A1A;
+  --ed-input-2:  #141414;
+  --ed-hover:    rgba(255,255,255,.05);
+  --ed-shadow:   rgba(0,0,0,.6);
+}
+[data-theme="light"] {
+  color-scheme: light;
+  --ed-canvas:   #E7EAEE;
+  --ed-panel:    #FFFFFF;
+  --ed-bar:      #F6F7F9;
+  --ed-border:   #E2E5EA;
+  --ed-border-2: #D6DAE0;
+  --ed-text:     #1C2024;
+  --ed-text-2:   #5A626B;
+  --ed-text-3:   #828A93;
+  --ed-input:    #F3F5F7;
+  --ed-input-2:  #ECEEF1;
+  --ed-hover:    rgba(0,0,0,.05);
+  --ed-shadow:   rgba(20,30,50,.16);
+}
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--ed-input-2, #111); }
+::-webkit-scrollbar-thumb { background: var(--ed-border-2, #333); border-radius: 4px; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── micro-interactions ── */
+@keyframes ed-elem-in {
+  from { opacity: 0; transform: scale(.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes ed-panel-in {
+  from { opacity: 0; transform: translateX(6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes ed-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.ed-elem-in  { animation: ed-elem-in .16s ease-out; }
+.ed-panel-in { animation: ed-panel-in .14s ease-out; }
+.ed-fade-in  { animation: ed-fade-in .18s ease-out; }
+
+/* quick, non-intrusive hover smoothing for controls */
+button { transition: background-color .12s ease, color .12s ease, border-color .12s ease, box-shadow .12s ease, opacity .12s ease; }
+button:active { transform: scale(.98); }
+
+/* section controls reveal on hover */
+.ed-section-ctrls { opacity: 0; transition: opacity .12s ease; }
+.ed-section-row:hover .ed-section-ctrls { opacity: 1; }
+
+/* react-selecto rubber band */
+.selecto-selection { background: rgba(56,208,48,.12) !important; border: 1.5px solid #38D030 !important; }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* infinite marquee — track holds two identical copies, slides exactly one copy */
+@keyframes orve-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.orve-marquee:hover .orve-marquee-track { animation-play-state: paused; }
+
+/* react-moveable theme */
+.orve-moveable .moveable-line { background: #38D030 !important; }
+.orve-moveable .moveable-direction { background: #38D030 !important; border-color: #063800 !important; }
+.orve-moveable .moveable-direction.moveable-n,
+.orve-moveable .moveable-direction.moveable-s,
+.orve-moveable .moveable-direction.moveable-e,
+.orve-moveable .moveable-direction.moveable-w {
+  background: #fff !important;
+  border-color: #38D030 !important;
+}
