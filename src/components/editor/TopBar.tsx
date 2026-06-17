@@ -46,12 +46,9 @@ export function TopBar() {
       {/* left: logo + breadcrumb + status */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{
-            width: 22, height: 22,
-            background: '#38D030', transform: 'rotate(45deg)',
-            borderRadius: 5, display: 'inline-block',
-          }} />
-          <span style={{ fontSize: 16, fontWeight: 900, letterSpacing: '1.1px', color: '#fff' }}>ORVE</span>
+          <OrveMark size={26} />
+          <span style={{ fontSize: 16, fontWeight: 900, letterSpacing: '1.1px', color: 'var(--ed-text)' }}>ORVE</span>
+          <DiamondMark size={13} />
         </div>
         <span style={{ width: 1, height: 22, background: 'var(--ed-border-2)' }} />
         <span style={{ color: 'var(--ed-text)', fontWeight: 800, fontSize: 13 }}>Mi Landing</span>
@@ -261,6 +258,32 @@ function PublicLinkPopover({ url, onClose }: { url: string; onClose: () => void 
         </a>
       </div>
     </>
+  )
+}
+
+// Inline ORVE wheat/diamond mark — instant load, crisp at any size, brand green.
+function OrveMark({ size = 26 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none"
+      stroke="#38D030" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"
+      style={{ flexShrink: 0 }} aria-label="ORVE">
+      {/* woven diamond lattice (wheat) */}
+      <path d="M16 8 L40 32" />
+      <path d="M8 16 L32 40" />
+      <path d="M32 8 L8 32" />
+      <path d="M40 16 L16 40" />
+      {/* stem */}
+      <path d="M24 39 L24 47" />
+    </svg>
+  )
+}
+
+// Solid diamond accent ("Diamantes de las Ventas").
+function DiamondMark({ size = 13 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ flexShrink: 0 }} aria-hidden="true">
+      <path d="M12 2 L22 12 L12 22 L2 12 Z" fill="#38D030" />
+    </svg>
   )
 }
 
