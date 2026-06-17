@@ -278,11 +278,20 @@ function OrveMark({ size = 26 }: { size?: number }) {
   )
 }
 
-// Solid diamond accent ("Diamantes de las Ventas").
-function DiamondMark({ size = 13 }: { size?: number }) {
+// Brilliant-cut diamond accent ("Diamantes de las Ventas") — flat table on top,
+// crown + pavilion facets, pointed bottom (not a plain rhombus).
+function DiamondMark({ size = 15 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" style={{ flexShrink: 0 }} aria-hidden="true">
-      <path d="M12 2 L22 12 L12 22 L2 12 Z" fill="#38D030" />
+      {/* gem silhouette */}
+      <path d="M7 4 L17 4 L22 9 L12 21 L2 9 Z" fill="#38D030" />
+      {/* facet cuts */}
+      <g stroke="#0C3A12" strokeWidth="0.9" strokeLinejoin="round" fill="none" opacity="0.5">
+        <path d="M2 9 H22" />
+        <path d="M7 4 L9.2 9 L12 21" />
+        <path d="M17 4 L14.8 9 L12 21" />
+        <path d="M12 4 L12 9" />
+      </g>
     </svg>
   )
 }
