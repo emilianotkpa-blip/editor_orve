@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLandingStore } from '../../store/useLandingStore'
-import { OrveMark, DiamondMark } from '../shared/Brand'
+import { OrveLogo, DiamondMark } from '../shared/Brand'
 
 export function TopBar() {
   const {
@@ -46,9 +46,9 @@ export function TopBar() {
     }}>
       {/* left: logo + breadcrumb + status */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {/* logotipo oficial (ya trae el «ORVE») + marca del producto DVD */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
-          <OrveMark size={43} />
-          <span style={{ fontSize: 22, fontWeight: 900, letterSpacing: '1.1px', color: 'var(--ed-text)' }}>ORVE</span>
+          <OrveLogo height={26} tinta={theme === 'dark' ? 'blanco' : 'color'} />
           <DiamondMark size={26} />
         </div>
         <span style={{ width: 1, height: 22, background: 'var(--ed-border-2)' }} />

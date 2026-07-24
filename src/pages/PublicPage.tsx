@@ -5,7 +5,7 @@ import type { LandingConfig } from '../types/landing'
 import { STAGE_W } from '../lib/layout'
 import { sectionFondoLayer } from '../lib/sections'
 import { BackgroundLayer } from '../components/shared/BackgroundLayer'
-import { OrveMark, DiamondMark } from '../components/shared/Brand'
+import { OrveLogo, DiamondMark } from '../components/shared/Brand'
 import { resolveSrc } from '../lib/images'
 
 type Status = 'loading' | 'ready' | 'unavailable'
@@ -189,12 +189,9 @@ function UnavailableScreen({ slug }: { slug: string }) {
       fontFamily: 'Mulish, sans-serif',
     }}>
       <div style={{ textAlign: 'center', padding: '40px 24px' }}>
-        {/* ORVE logo */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 40 }}>
-          <OrveMark size={52} />
-          <span style={{ fontSize: 30, fontWeight: 900, color: '#ECEEEF', letterSpacing: '1.5px' }}>
-            ORVE
-          </span>
+        {/* logotipo oficial — fondo negro, así que va en negativo */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 40 }}>
+          <OrveLogo width={190} tinta="blanco" />
         </div>
 
         <div style={{ marginBottom: 20, opacity: .55, display: 'flex', justifyContent: 'center' }}>

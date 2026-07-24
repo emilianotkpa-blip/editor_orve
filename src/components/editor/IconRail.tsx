@@ -13,6 +13,7 @@ const TOOLS: ToolDef[] = [
   { id: 'galeria',   label: 'Galería',        shortcut: 'G', icon: <GalIcon /> },
   { id: 'proyectos', label: 'Proyectos',      shortcut: 'P', icon: <ProyIcon /> },
   { id: 'formulario',label: 'Formulario',     shortcut: 'F', icon: <FormIcon /> },
+  { id: 'logo',      label: 'Logo ORVE',      shortcut: 'L', icon: <LogoIcon /> },
 ]
 
 const ADDABLE = TOOLS.filter((t) => t.id !== 'select') as Array<ToolDef & { id: ElementoTipo }>
@@ -202,6 +203,17 @@ function FormIcon() {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <rect x="3" y="3" width="18" height="18" rx="3"/>
       <path d="M7 8h10M7 12h10M7 16h5"/>
+    </svg>
+  )
+}
+
+// Espiga ORVE, simplificada al trazo del resto del rail.
+function LogoIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M12 22v-6"/>
+      <path d="M12 16 3 7M12 16l9-9"/>
+      <path d="M8 12l7-7M16 12 9 5"/>
     </svg>
   )
 }

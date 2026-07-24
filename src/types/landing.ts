@@ -1,6 +1,6 @@
 export type Viewport = 'escritorio' | 'movil'
 
-export type ElementoTipo = 'imagen' | 'texto' | 'boton' | 'galeria' | 'formulario' | 'bloque' | 'proyectos'
+export type ElementoTipo = 'imagen' | 'texto' | 'boton' | 'galeria' | 'formulario' | 'bloque' | 'proyectos' | 'logo'
 
 export interface ProyectoCard {
   id: string
@@ -163,6 +163,15 @@ const TIPO_DEFAULTS: Record<ElementoTipo, ElementDefaults> = {
     w: 280, h: 180,
     contenido: {},
     estilo: { bgColor: '#26323B', opacidad: 1, radio: 8 },
+  },
+  // Logo oficial ORVE. 240×97 respeta la proporción 2.488:1 del logotipo
+  // horizontal y cae dentro del rango del manual (190..550 de ancho).
+  // Arranca en blanco porque las secciones nacen con fondo oscuro; la versión
+  // de color es la oficial y está a un clic en el inspector.
+  logo: {
+    w: 240, h: 97,
+    contenido: { variante: 'lockup', tinta: 'blanco' },
+    estilo: { opacidad: 1 },
   },
   proyectos: {
     w: 760, h: 348,

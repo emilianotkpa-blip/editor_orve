@@ -6,6 +6,8 @@ import { fontStack, loadFont } from '../../lib/fonts'
 import { elementBorderShadow } from '../../lib/effects'
 import { resolveButtonAction } from '../../lib/acciones'
 import { getCampos } from '../../lib/forms'
+import { OrveLogo, type LogoVariante, type LogoTinta } from './Brand'
+import { margenSeguro } from '../../lib/marca'
 
 interface Props {
   element: LandingElemento
@@ -22,6 +24,9 @@ export const ElementRenderer = forwardRef<HTMLDivElement, Props>(
     const interactive = !onSelect   // public page (no selection handler) → live behaviour
     // for project cards the radius/shadow/border apply to each card, not the wrapper
     const isProyectos = element.tipo === 'proyectos'
+    // the brand mark never takes corners, borders or shadows — manual de marca
+    const isLogo = element.tipo === 'logo'
+    const sinCaja = isProyectos || isLogo
 
     const baseStyle: CSSProperties = {
       position: 'absolute',
@@ -30,12 +35,19 @@ export const ElementRenderer = forwardRef<HTMLDivElement, Props>(
       width:  geo.w,
       height: geo.h,
       zIndex: geo.z,
-      borderRadius: !isProyectos && estilo.radio ? `${estilo.radio}px` : 0,
+      borderRadius: !sinCaja && estilo.radio ? `${estilo.radio}px` : 0,
       opacity: estilo.opacidad ?? 1,
       overflow: 'hidden',
       cursor: onSelect ? 'pointer' : 'default',
       userSelect: 'none',
-      ...(isProyectos ? {} : elementBorderShadow(estilo)),
+      ...(sinCaja ? {} : elementBorderShadow(estilo)),
+      // Guía de margen seguro (solo en el editor, con el logo seleccionado).
+      // Va como `outline` a propósito: no lo recorta el overflow del propio
+      // elemento, así que se ve el aire que el manual exige alrededor.
+      ...(isLogo && isSelected && onSelect ? {
+        outline: '1px dashed rgba(56,208,48,.5)',
+        outlineOffset: margenSeguro(geo.w),
+      } : {}),
     }
 
     return (
@@ -47,6 +59,7 @@ export const ElementRenderer = forwardRef<HTMLDivElement, Props>(
         style={baseStyle}
         onClick={(e) => { e.stopPropagation(); onSelect?.(e) }}
       >
+        {element.tipo === 'logo'       && <LogoEl      element={element} />}
         {element.tipo === 'bloque'     && <BloqueEl    element={element} />}
         {element.tipo === 'imagen'     && <ImagenEl    element={element} signedUrls={signedUrls} />}
         {element.tipo === 'texto'      && <TextoEl     element={element} />}
@@ -62,6 +75,22 @@ export const ElementRenderer = forwardRef<HTMLDivElement, Props>(
 ElementRenderer.displayName = 'ElementRenderer'
 
 // ── sub-renderers ─────────────────────────────────────────────────────────
+
+// Logo oficial ORVE. El SVG se ajusta con `meet`, así que aunque la caja
+// quedara con otra proporción la marca nunca se deforma ni se recorta: solo
+// se centra y sobra aire. Es la última red de seguridad contra la «distorsión»
+// y el «cambio de proporción» que prohíbe el manual.
+function LogoEl({ element }: { element: LandingElemento }) {
+  const { contenido } = element
+  const variante = ((contenido.variante as string) || 'lockup') as LogoVariante
+  const tinta    = ((contenido.tinta    as string) || 'color')  as LogoTinta
+
+  return (
+    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <OrveLogo variante={variante} tinta={tinta} width="100%" height="100%" />
+    </div>
+  )
+}
 
 function BloqueEl({ element }: { element: LandingElemento }) {
   const { estilo } = element

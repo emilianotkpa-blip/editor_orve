@@ -8,6 +8,8 @@ import { STAGE_W, MIN_SECTION_H, MAX_SECTION_H } from '../../lib/layout'
 import { sectionFondoLayer } from '../../lib/sections'
 import { BackgroundLayer } from '../shared/BackgroundLayer'
 import { resolveSrc } from '../../lib/images'
+import { logoGeo } from '../../lib/marca'
+import type { LogoVariante } from '../shared/Brand'
 
 const MOBILE_W = 390
 
@@ -22,7 +24,7 @@ export function Canvas() {
     setLiveGeo, updateElementGeometry, getSelectedSectionId,
     activeTool, setActiveTool, addElement, deleteSelected, moveSelected, commitGroupGeometry,
     signedUrls, activeSectionId, setActiveSection,
-    reassignElement, setSectionHeight, undo, redo,
+    reassignElement, setSectionHeight, undo, redo, getSelectedElement,
   } = useLandingStore()
 
   const frameRef   = useRef<HTMLDivElement>(null)
@@ -40,6 +42,11 @@ export function Canvas() {
   const selectedSectionId = getSelectedSectionId() ?? (selectedIds.length ? findSectionId(config, selectedIds[0]) : null)
   const isPlacing         = activeTool !== 'select' && !isMobile
   const multi             = moveableTargets.length > 1
+
+  // El logo se redimensiona con la proporción bloqueada y solo desde las
+  // esquinas: el manual de marca prohíbe distorsionarlo o cambiar su
+  // proporción. La rotación no existe en el editor, tampoco por eso.
+  const logoSel = !multi && getSelectedElement()?.tipo === 'logo'
 
   // Resolve Moveable targets + container after commit. Locked elements are
   // excluded (no handles → can't move/resize them).
@@ -171,8 +178,22 @@ export function Canvas() {
     const y = Math.round(parseFloat(t.style.top)    || 0)
     const w = Math.round(parseFloat(t.style.width)  || 0)
     const h = Math.round(parseFloat(t.style.height) || 0)
+
+    // Logo: al soltar, el tamaño cae al rango del manual (190..550 de ancho en
+    // el logotipo horizontal). Se ancla el borde que el usuario NO arrastró,
+    // para que el recorte no lo haga saltar de sitio.
+    const el = getSelectedElement()
+    if (el?.tipo === 'logo') {
+      const variante = ((el.contenido.variante as string) || 'lockup') as LogoVariante
+      const g = logoGeo(variante, w)
+      const nx = Math.abs(x - el.geometria.escritorio.x) > 0.5 ? x + (w - g.w) : x
+      const ny = Math.abs(y - el.geometria.escritorio.y) > 0.5 ? y + (h - g.h) : y
+      updateElementGeometry(selectedSectionId, selectedElementId, { x: Math.round(nx), y: Math.round(ny), ...g })
+      return
+    }
+
     updateElementGeometry(selectedSectionId, selectedElementId, { x, y, w, h })
-  }, [selectedElementId, selectedSectionId, updateElementGeometry])
+  }, [selectedElementId, selectedSectionId, updateElementGeometry, getSelectedElement])
 
   // ── group (multi-select) move ──────────────────────────────────────────
   const handleDragGroupStart = useCallback(() => { setIsDragging(true) }, [])
@@ -342,8 +363,11 @@ export function Canvas() {
                   container={moveableContainer}
                   draggable
                   resizable={!multi}
+                  keepRatio={logoSel}
                   throttleDrag={0} throttleResize={0}
-                  renderDirections={['nw','n','ne','w','e','sw','s','se']}
+                  renderDirections={logoSel
+                    ? ['nw','ne','sw','se']
+                    : ['nw','n','ne','w','e','sw','s','se']}
                   origin={false}
                   onDragStart={handleDragStart}
                   onDrag={handleDrag}

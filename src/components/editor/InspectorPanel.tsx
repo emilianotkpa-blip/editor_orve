@@ -8,6 +8,8 @@ import { FONTS, FONT_CATEGORY_LABEL, fontStack, loadFont } from '../../lib/fonts
 import { DEFAULT_SOMBRA } from '../../lib/effects'
 import { getCampos, newCampo, CAMPO_TIPOS, CAMPO_TIPO_LABEL } from '../../lib/forms'
 import type { FormCampo, FondoAjustes, ProyectoCard } from '../../types/landing'
+import { OrveLogo, type LogoVariante, type LogoTinta } from '../shared/Brand'
+import { logoGeo, logoLimites, margenSeguro } from '../../lib/marca'
 
 function newProyectoCard(): ProyectoCard {
   return {
@@ -103,6 +105,15 @@ export function InspectorPanel() {
 
   function patchContent(patch: Partial<LandingElemento['contenido']>) {
     updateElementContent(secId!, el!.id, patch)
+  }
+
+  // El logo se dimensiona por el ancho: el alto sale de la proporción original
+  // y el ancho cae dentro del rango del manual. Nunca se editan por separado.
+  const esLogo = el.tipo === 'logo'
+  const logoVariante = ((el.contenido.variante as string) || 'lockup') as LogoVariante
+
+  function setLogoAncho(w: number) {
+    updateElementGeometry(secId!, el!.id, logoGeo(logoVariante, w))
   }
 
   return (
@@ -210,9 +221,14 @@ export function InspectorPanel() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
             <EditableGeoInput label="X" value={geo.x ?? 0} onChange={(v) => patchGeo('x', v)} live={liveGeo != null} readOnly={isMobile} />
             <EditableGeoInput label="Y" value={geo.y ?? 0} onChange={(v) => patchGeo('y', v)} live={liveGeo != null} readOnly={isMobile} />
-            <EditableGeoInput label="W" value={geo.w ?? 0} onChange={(v) => patchGeo('w', v)} live={liveGeo != null} readOnly={isMobile} />
-            <EditableGeoInput label="H" value={geo.h ?? 0} onChange={(v) => patchGeo('h', v)} live={liveGeo != null} readOnly={isMobile} />
+            <EditableGeoInput label="W" value={geo.w ?? 0} onChange={(v) => esLogo ? setLogoAncho(v) : patchGeo('w', v)} live={liveGeo != null} readOnly={isMobile} />
+            <EditableGeoInput label="H" value={geo.h ?? 0} onChange={(v) => patchGeo('h', v)} live={liveGeo != null} readOnly={isMobile || esLogo} />
           </div>
+          {esLogo && (
+            <div style={{ fontSize: 10, color: '#4F5458', marginTop: 6, lineHeight: 1.4 }}>
+              El alto lo fija la proporción del logo. Ajusta solo el ancho.
+            </div>
+          )}
           <div style={{ marginTop: 8 }}>
             <div style={{ fontSize: 10, color: '#4F5458', fontWeight: 700, marginBottom: 5 }}>Orden de capa</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
@@ -259,11 +275,14 @@ export function InspectorPanel() {
         {el.tipo === 'formulario' && (
           <FormularioInspector el={el} patchStyle={patchStyle} patchContent={patchContent} />
         )}
+        {el.tipo === 'logo' && (
+          <LogoInspector el={el} patchContent={patchContent} ancho={geo.w ?? 0} setAncho={setLogoAncho} readOnly={isMobile} />
+        )}
 
         <Divider />
 
         {/* ── effects (all elements) ── */}
-        <EfectosControls el={el} patchStyle={patchStyle} />
+        <EfectosControls el={el} patchStyle={patchStyle} soloOpacidad={esLogo} />
 
       </div>
     </div>
@@ -272,9 +291,22 @@ export function InspectorPanel() {
 
 // Reusable effects panel: rounded corners, opacity, shadow, border. Lives on the
 // element (color block, images, etc.).
-function EfectosControls({ el, patchStyle }: { el: LandingElemento; patchStyle: (p: Partial<LandingElemento['estilo']>) => void }) {
+function EfectosControls({ el, patchStyle, soloOpacidad }: { el: LandingElemento; patchStyle: (p: Partial<LandingElemento['estilo']>) => void; soloOpacidad?: boolean }) {
   const sombra = el.estilo.sombra ?? { ...DEFAULT_SOMBRA, activa: false }
   const borde  = el.estilo.borde ?? { ancho: 0, color: '#000000' }
+
+  // El logo no lleva esquinas, borde ni sombra: sería intervenir la marca.
+  if (soloOpacidad) {
+    return (
+      <Section title="Efectos">
+        <NumInput label="Opacidad %" value={Math.round((el.estilo.opacidad ?? 1) * 100)} onChange={(v) => patchStyle({ opacidad: Math.max(0, Math.min(100, v)) / 100 })} />
+        <div style={{ fontSize: 10, color: '#4F5458', marginTop: 6, lineHeight: 1.4 }}>
+          El logo no admite esquinas redondeadas, borde ni sombra.
+        </div>
+      </Section>
+    )
+  }
+
   return (
     <Section title="Efectos">
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
@@ -311,6 +343,141 @@ interface SubProps {
   el: LandingElemento
   patchStyle: (p: Partial<LandingElemento['estilo']>) => void
   patchContent: (p: Partial<LandingElemento['contenido']>) => void
+}
+
+// ── Logo ORVE ──────────────────────────────────────────────────────────────
+// Todo lo que este panel permite está dentro del Manual de Marca 2026. Lo que
+// el manual prohíbe (rotar, distorsionar, cambiar la proporción, mover el sello
+// de sitio) sencillamente no tiene control aquí ni en el canvas.
+
+const LOGO_VARIANTES: { id: LogoVariante; label: string }[] = [
+  { id: 'lockup',  label: 'Horizontal' },
+  { id: 'sello',   label: 'Sello' },
+  { id: 'isotipo', label: 'Isotipo' },
+]
+
+const LOGO_TINTAS: { id: LogoTinta; label: string; nota: string; fondo: string }[] = [
+  { id: 'color',  label: 'Color',  nota: 'Versión oficial. Para fondos claros.', fondo: '#F2F2F2' },
+  { id: 'negro',  label: 'Negro',  nota: 'Monocromo. Solo si el fondo claro no da contraste al verde.', fondo: '#F2F2F2' },
+  { id: 'blanco', label: 'Blanco', nota: 'Monocromo en negativo. Para fondos oscuros y fotos.', fondo: '#141414' },
+]
+
+function LogoInspector({
+  el, patchContent, ancho, setAncho, readOnly,
+}: {
+  el: LandingElemento
+  patchContent: (p: Partial<LandingElemento['contenido']>) => void
+  ancho: number
+  setAncho: (w: number) => void
+  readOnly?: boolean   // vista móvil: el tamaño se edita en Escritorio
+}) {
+  const variante = ((el.contenido.variante as string) || 'lockup') as LogoVariante
+  const tinta    = ((el.contenido.tinta    as string) || 'color')  as LogoTinta
+  const { min, max } = logoLimites(variante)
+  const notaTinta = LOGO_TINTAS.find((t) => t.id === tinta)?.nota ?? ''
+
+  // Al cambiar de variante cambia la proporción → se reencuadra el ancho para
+  // que siga dentro del rango de esa variante y el alto se recalcule.
+  function setVariante(v: LogoVariante) {
+    patchContent({ variante: v })
+    setAncho(logoGeo(v, ancho).w)
+  }
+
+  return (
+    <>
+      <Section title="Logo ORVE">
+        <div style={{ fontSize: 10, color: '#4F5458', fontWeight: 700, marginBottom: 5 }}>Variante</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5 }}>
+          {LOGO_VARIANTES.map((v) => (
+            <button
+              key={v.id}
+              onClick={() => setVariante(v.id)}
+              title={v.label}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                padding: '8px 4px 6px', borderRadius: 8, cursor: 'pointer',
+                background: variante === v.id ? 'rgba(56,208,48,.12)' : 'var(--ed-input)',
+                border: `1px solid ${variante === v.id ? 'rgba(56,208,48,.55)' : 'var(--ed-border-2)'}`,
+                fontFamily: 'inherit',
+              }}
+            >
+              <span style={{ height: 22, display: 'flex', alignItems: 'center' }}>
+                <OrveLogo variante={v.id} tinta="blanco" height={v.id === 'lockup' ? 14 : 22} />
+              </span>
+              <span style={{ fontSize: 9, fontWeight: 700, color: variante === v.id ? '#38D030' : '#6C7278' }}>
+                {v.label}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <div style={{ fontSize: 10, color: '#4F5458', fontWeight: 700, margin: '12px 0 5px' }}>Color</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5 }}>
+          {LOGO_TINTAS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => patchContent({ tinta: t.id })}
+              title={t.nota}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                padding: 4, borderRadius: 8, cursor: 'pointer',
+                background: 'transparent',
+                border: `1px solid ${tinta === t.id ? 'rgba(56,208,48,.55)' : 'var(--ed-border-2)'}`,
+                fontFamily: 'inherit',
+              }}
+            >
+              <span style={{
+                width: '100%', height: 26, borderRadius: 5, background: t.fondo,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <OrveLogo variante="lockup" tinta={t.id} height={11} />
+              </span>
+              <span style={{ fontSize: 9, fontWeight: 700, color: tinta === t.id ? '#38D030' : '#6C7278' }}>
+                {t.label}
+              </span>
+            </button>
+          ))}
+        </div>
+        <div style={{ fontSize: 10, color: '#4F5458', marginTop: 6, lineHeight: 1.4 }}>{notaTinta}</div>
+      </Section>
+
+      <Divider />
+
+      <Section title="Tamaño y aire">
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 5 }}>
+          <span style={{ fontSize: 10, color: '#4F5458', fontWeight: 700 }}>Ancho</span>
+          <span style={{ fontSize: 11, color: '#38D030', fontWeight: 700, fontFamily: 'monospace' }}>{ancho} px</span>
+        </div>
+        <input
+          type="range"
+          min={min}
+          max={max}
+          disabled={readOnly}
+          value={Math.max(min, Math.min(max, ancho))}
+          onChange={(e) => setAncho(Number(e.target.value))}
+          onKeyDown={(e) => e.stopPropagation()}
+          style={{ width: '100%', accentColor: '#38D030', opacity: readOnly ? 0.45 : 1 }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#4F5458', fontWeight: 700, fontFamily: 'monospace' }}>
+          <span>mín {min}</span>
+          <span>máx {max}</span>
+        </div>
+
+        <div style={{
+          marginTop: 10, padding: '8px 10px', borderRadius: 7,
+          background: 'rgba(56,208,48,.07)', border: '1px solid rgba(56,208,48,.2)',
+          fontSize: 10, color: '#8A9A8C', lineHeight: 1.5,
+        }}>
+          <div style={{ color: '#38D030', fontWeight: 800, marginBottom: 4 }}>Manual de Marca ORVE 2026</div>
+          Margen seguro: deja <b style={{ color: '#ECEEEF' }}>{margenSeguro(ancho)} px</b> libres
+          alrededor. Con el logo seleccionado lo ves marcado en el canvas.
+          <div style={{ marginTop: 5 }}>
+            Proporción bloqueada · sin rotación · el sello no se recoloca.
+          </div>
+        </div>
+      </Section>
+    </>
+  )
 }
 
 function BloqueInspector({ el, patchStyle }: SubProps) {

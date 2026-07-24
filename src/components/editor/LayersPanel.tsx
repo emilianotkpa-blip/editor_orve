@@ -10,9 +10,10 @@ const TIPO_LABELS: Record<ElementoTipo, string> = {
   formulario: 'Formulario',
   bloque:     'Bloque de color',
   proyectos:  'Proyectos',
+  logo:       'Logo ORVE',
 }
 
-const TIPO_ORDER: ElementoTipo[] = ['texto', 'imagen', 'boton', 'bloque', 'galeria', 'proyectos', 'formulario']
+const TIPO_ORDER: ElementoTipo[] = ['texto', 'imagen', 'boton', 'bloque', 'galeria', 'proyectos', 'formulario', 'logo']
 
 export function LayersPanel() {
   const {
@@ -388,6 +389,13 @@ function ElementTypeIcon({ tipo, active, size = 13 }: { tipo: string; active: bo
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
       <rect x="3" y="3" width="18" height="18" rx="2"/>
       <path d="M7 8h10M7 12h10M7 16h5"/>
+    </svg>
+  )
+  if (tipo === 'logo') return (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round">
+      <path d="M12 22v-6"/>
+      <path d="M12 16 3 7M12 16l9-9"/>
+      <path d="M8 12l7-7M16 12 9 5"/>
     </svg>
   )
   return <span style={{ width: s, height: s, borderRadius: 3, background: color, display: 'inline-block' }} />
