@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { AnimatePresence, m } from 'motion/react'
 import { useLandingStore } from '../../store/useLandingStore'
 import type { ElementoTipo } from '../../types/landing'
+import { LAYOUT, POP, popover, fila, accionFila } from '../../lib/motion'
 
 const TIPO_LABELS: Record<ElementoTipo, string> = {
   texto:      'Texto',
@@ -74,28 +76,36 @@ export function LayersPanel() {
             +
           </button>
 
-          {showAddMenu && (
-            <div style={{
-              position: 'absolute', right: 0, top: 30, zIndex: 200,
-              background: 'var(--ed-panel)', border: '1px solid var(--ed-border-2)',
-              borderRadius: 10, padding: 6, minWidth: 150,
-              boxShadow: '0 8px 28px rgba(0,0,0,.6)',
-            }}>
-              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.6px', color: '#4F5458', textTransform: 'uppercase', padding: '4px 8px 6px' }}>
-                Agregar elemento
-              </div>
-              {TIPO_ORDER.map((tipo) => (
-                <AddMenuBtn
-                  key={tipo}
-                  tipo={tipo}
-                  onClick={() => {
-                    if (targetSectionId) addElement(targetSectionId, tipo)
-                    setShowAddMenu(false)
-                  }}
-                />
-              ))}
-            </div>
-          )}
+          <AnimatePresence>
+            {showAddMenu && (
+              <m.div
+                key="menu-agregar"
+                variants={popover} initial="initial" animate="animate" exit="exit"
+                transition={POP}
+                style={{
+                  position: 'absolute', right: 0, top: 30, zIndex: 200,
+                  transformOrigin: 'top right',
+                  background: 'var(--ed-panel)', border: '1px solid var(--ed-border-2)',
+                  borderRadius: 10, padding: 6, minWidth: 150,
+                  boxShadow: '0 8px 28px rgba(0,0,0,.6)',
+                }}
+              >
+                <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.6px', color: '#4F5458', textTransform: 'uppercase', padding: '4px 8px 6px' }}>
+                  Agregar elemento
+                </div>
+                {TIPO_ORDER.map((tipo) => (
+                  <AddMenuBtn
+                    key={tipo}
+                    tipo={tipo}
+                    onClick={() => {
+                      if (targetSectionId) addElement(targetSectionId, tipo)
+                      setShowAddMenu(false)
+                    }}
+                  />
+                ))}
+              </m.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
@@ -107,8 +117,10 @@ export function LayersPanel() {
         />
       )}
 
-      {/* layers list */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+      {/* layers list
+          layoutScroll: la lista scrollea, y sin esto Motion mide las filas
+          contra el viewport y el reacomodo sale desplazado. */}
+      <m.div layoutScroll style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
         {/* page properties entry */}
         <div
           onClick={() => setEditingPage(true)}
@@ -167,15 +179,27 @@ export function LayersPanel() {
                 .sort((a, b) => (b.geometria.escritorio.z - a.geometria.escritorio.z))
               const frontToBackIds = frontToBack.map((e) => e.id)
 
-              return frontToBack.map((el) => {
+              return (
+                <AnimatePresence initial={false}>
+                {frontToBack.map((el) => {
                 const isSelected = selectedIds.includes(el.id)
                 const isHovered  = el.id === hoveredId
                 const isDragging = el.id === dragId
                 const isDropTarget = el.id === dragOverId && dragId !== null && dragId !== el.id
 
                 return (
-                  <div
+                  // El wrapper solo hace layout y presencia. El arrastre nativo
+                  // se queda en el div de adentro a propósito: Motion se queda
+                  // con los nombres onDragStart/onDragEnd para su propio drag y
+                  // no los deja llegar al DOM, así que aquí romperían el HTML5
+                  // drag & drop que ya reordena las capas.
+                  <m.div
                     key={el.id}
+                    layout
+                    variants={fila} initial="initial" animate="animate" exit="exit"
+                    transition={LAYOUT}
+                  >
+                  <div
                     draggable
                     onDragStart={(e) => { setDragId(el.id); e.dataTransfer.effectAllowed = 'move' }}
                     onDragOver={(e) => { e.preventDefault(); if (dragId && dragId !== el.id) setDragOverId(el.id) }}
@@ -214,39 +238,48 @@ export function LayersPanel() {
                     </span>
 
                     <div style={{ display: 'flex', gap: 3, flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
-                      {/* lock — always shown when locked, otherwise on hover/selection */}
-                      {(el.bloqueado || isHovered || isSelected) && (
-                        <LayerActionBtn
-                          title={el.bloqueado ? 'Desbloquear' : 'Bloquear'}
-                          active={el.bloqueado}
-                          onClick={() => toggleLock(seccion.id, el.id)}
-                        >
-                          {el.bloqueado ? <LockClosedIcon /> : <LockOpenIcon />}
-                        </LayerActionBtn>
-                      )}
-                      {(isHovered || isSelected) && (
-                        <>
-                          <LayerActionBtn title="Duplicar" onClick={() => duplicateElement(seccion.id, el.id)}>
+                      <AnimatePresence initial={false}>
+                        {/* lock — always shown when locked, otherwise on hover/selection */}
+                        {(el.bloqueado || isHovered || isSelected) && (
+                          <LayerActionBtn
+                            key="lock"
+                            title={el.bloqueado ? 'Desbloquear' : 'Bloquear'}
+                            active={el.bloqueado}
+                            onClick={() => toggleLock(seccion.id, el.id)}
+                          >
+                            {el.bloqueado ? <LockClosedIcon /> : <LockOpenIcon />}
+                          </LayerActionBtn>
+                        )}
+                        {(isHovered || isSelected) && (
+                          <LayerActionBtn key="dup" title="Duplicar" onClick={() => duplicateElement(seccion.id, el.id)}>
                             <CopyIcon />
                           </LayerActionBtn>
-                          <LayerActionBtn title="Eliminar" danger onClick={() => deleteElement(seccion.id, el.id)}>
+                        )}
+                        {(isHovered || isSelected) && (
+                          <LayerActionBtn key="del" title="Eliminar" danger onClick={() => deleteElement(seccion.id, el.id)}>
                             <TrashIcon />
                           </LayerActionBtn>
-                        </>
-                      )}
+                        )}
+                      </AnimatePresence>
                     </div>
                   </div>
+                  </m.div>
                 )
-              })
+                })}
+                </AnimatePresence>
+              )
             })()}
           </div>
           )
         })}
 
         {/* add section */}
-        <div style={{ padding: '10px 12px 4px' }}>
-          <button
+        <m.div layout style={{ padding: '10px 12px 4px' }}>
+          <m.button
             onClick={() => addSection()}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            transition={POP}
             style={{
               width: '100%', padding: '8px 0', borderRadius: 7,
               background: 'rgba(56,208,48,.12)', border: '1px dashed rgba(56,208,48,.4)',
@@ -255,9 +288,9 @@ export function LayersPanel() {
             }}
           >
             + Agregar sección
-          </button>
-        </div>
-      </div>
+          </m.button>
+        </m.div>
+      </m.div>
     </div>
   )
 }
@@ -312,22 +345,25 @@ function LayerActionBtn({
   const [hov, setHov] = useState(false)
   const lit = hov || active
   return (
-    <div
+    <m.div
       title={title}
       onClick={onClick}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
+      variants={accionFila} initial="initial" animate="animate" exit="exit"
+      whileTap={{ scale: 0.85 }}
+      transition={POP}
       style={{
         width: 22, height: 22, borderRadius: 5,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         cursor: 'pointer',
         background: lit ? (danger ? 'rgba(255,80,80,.15)' : active ? 'rgba(201,154,58,.18)' : 'rgba(56,208,48,.12)') : 'transparent',
         color: lit ? (danger ? '#FF6B6B' : active ? '#C99A3A' : '#38D030') : 'var(--ed-text-3)',
-        transition: 'all .12s',
+        transition: 'background-color .12s, color .12s',
       }}
     >
       {children}
-    </div>
+    </m.div>
   )
 }
 

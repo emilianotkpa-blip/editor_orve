@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
+import { AnimatePresence, m } from 'motion/react'
 import Moveable, { type OnDrag, type OnDragEnd, type OnResize, type OnResizeEnd, type OnDragGroup, type OnDragGroupEnd } from 'react-moveable'
 import Selecto from 'react-selecto'
 import { useLandingStore } from '../../store/useLandingStore'
@@ -10,6 +11,7 @@ import { BackgroundLayer } from '../shared/BackgroundLayer'
 import { resolveSrc } from '../../lib/images'
 import { logoGeo } from '../../lib/marca'
 import type { LogoVariante } from '../shared/Brand'
+import { POP, PULSE, dropHint, fade } from '../../lib/motion'
 
 const MOBILE_W = 390
 
@@ -381,17 +383,51 @@ export function Canvas() {
                 />
               )}
 
+              {/* Zona de drop: la sección a la que caería el elemento que se
+                  está arrastrando. Es el "Suelta aquí …" del mockup.
+                  pointerEvents none — el arrastre lo sigue manejando moveable. */}
+              <AnimatePresence>
+                {isHover && (
+                  <m.div
+                    key="drop"
+                    variants={dropHint} initial="initial" animate="animate" exit="exit"
+                    transition={POP}
+                    style={{
+                      position: 'absolute', inset: 10, zIndex: 15, pointerEvents: 'none',
+                      border: '2px dashed #38D030', borderRadius: 10,
+                      background: 'rgba(56,208,48,.06)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <m.span
+                      animate={{ opacity: [0.75, 1, 0.75] }}
+                      transition={PULSE}
+                      style={{
+                        fontSize: 13, fontWeight: 800, color: '#38D030',
+                        background: 'rgba(10,20,12,.82)', padding: '7px 14px', borderRadius: 8,
+                      }}
+                    >
+                      Suelta aquí en «{sec.nombre ?? sec.id}»
+                    </m.span>
+                  </m.div>
+                )}
+              </AnimatePresence>
+
               {/* placement overlay — places into THIS section */}
-              {isPlacing && (
-                <div
-                  onClick={(e) => handlePlacementClick(sec.id, e)}
-                  style={{
-                    position: 'absolute', inset: 0, zIndex: 9000, cursor: 'crosshair',
-                    background: 'rgba(56,208,48,.025)',
-                    border: '1.5px dashed rgba(56,208,48,.35)',
-                  }}
-                />
-              )}
+              <AnimatePresence>
+                {isPlacing && (
+                  <m.div
+                    key="colocar"
+                    onClick={(e) => handlePlacementClick(sec.id, e)}
+                    variants={fade} initial="initial" animate="animate" exit="exit"
+                    style={{
+                      position: 'absolute', inset: 0, zIndex: 9000, cursor: 'crosshair',
+                      background: 'rgba(56,208,48,.025)',
+                      border: '1.5px dashed rgba(56,208,48,.35)',
+                    }}
+                  />
+                )}
+              </AnimatePresence>
 
               {/* section height handle */}
               {!isPlacing && (

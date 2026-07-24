@@ -42,22 +42,16 @@ html, body { margin: 0; padding: 0; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── micro-interactions ── */
+/* ── micro-interactions ──
+   El chrome del editor se anima con Motion (ver src/lib/motion.ts). Aquí solo
+   queda lo que vive DENTRO del lienzo: esos nodos los maneja react-moveable
+   escribiendo style.left/top en cada frame, así que se dejan en CSS para no
+   pelear con él por el mismo elemento. */
 @keyframes ed-elem-in {
   from { opacity: 0; transform: scale(.96); }
   to   { opacity: 1; transform: scale(1); }
 }
-@keyframes ed-panel-in {
-  from { opacity: 0; transform: translateX(6px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-@keyframes ed-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
 .ed-elem-in  { animation: ed-elem-in .16s ease-out; }
-.ed-panel-in { animation: ed-panel-in .14s ease-out; }
-.ed-fade-in  { animation: ed-fade-in .18s ease-out; }
 
 /* quick, non-intrusive hover smoothing for controls */
 button { transition: background-color .12s ease, color .12s ease, border-color .12s ease, box-shadow .12s ease, opacity .12s ease; }
@@ -69,11 +63,6 @@ button:active { transform: scale(.98); }
 
 /* react-selecto rubber band */
 .selecto-selection { background: rgba(56,208,48,.12) !important; border: 1.5px solid #38D030 !important; }
-
-@keyframes toastIn {
-  from { opacity: 0; transform: translate(-50%, 12px); }
-  to   { opacity: 1; transform: translate(-50%, 0); }
-}
 
 /* infinite marquee — track holds two identical copies, slides exactly one copy */
 @keyframes orve-marquee {

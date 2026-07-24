@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { AnimatePresence, m } from 'motion/react'
 import { useLandingStore } from '../../store/useLandingStore'
 import { OrveLogo, DiamondMark } from '../shared/Brand'
+import { POP, PULSE, LAYOUT, popover, panelSwap } from '../../lib/motion'
 
 export function TopBar() {
   const {
@@ -112,12 +114,22 @@ export function TopBar() {
 
         <span style={{ width: 1, height: 22, background: 'var(--ed-border-2)' }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--ed-text-3)', fontSize: 12, fontWeight: 700 }}>
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: saveDotColor, display: 'inline-block' }} />
+          {/* El punto late solo mientras guarda: es el único momento en que el
+              estado cambia solo y conviene que el ojo lo cache. */}
+          <m.span
+            animate={saveStatus === 'saving'
+              ? { scale: [1, 1.45, 1], opacity: [1, 0.6, 1] }
+              : { scale: 1, opacity: 1 }}
+            transition={saveStatus === 'saving' ? PULSE : POP}
+            style={{ width: 7, height: 7, borderRadius: '50%', background: saveDotColor, display: 'inline-block' }}
+          />
           {saveLabel}
         </div>
-        <button
+        <m.button
           onClick={() => saveLanding()}
           disabled={isSaving}
+          whileTap={{ scale: 0.96 }}
+          transition={POP}
           style={{
             background: 'transparent', border: '1px solid var(--ed-border-2)',
             color: 'var(--ed-text)', fontFamily: 'inherit', fontSize: 13, fontWeight: 700,
@@ -126,13 +138,16 @@ export function TopBar() {
           }}
         >
           Guardar
-        </button>
+        </m.button>
 
         {/* publish + link popover */}
         <div style={{ position: 'relative' }}>
-          <button
+          <m.button
             onClick={handlePublish}
             disabled={isPublishing}
+            whileHover={isPublishing ? undefined : { scale: 1.03 }}
+            whileTap={isPublishing ? undefined : { scale: 0.96 }}
+            transition={POP}
             style={{
               background: '#38D030', border: 'none', color: '#063800',
               fontFamily: 'inherit', fontSize: 13, fontWeight: 800,
@@ -142,11 +157,13 @@ export function TopBar() {
             }}
           >
             {isPublishing ? 'Publicando…' : published ? 'Republicar' : 'Publicar'}
-          </button>
+          </m.button>
 
-          {linkOpen && (
-            <PublicLinkPopover url={publicUrl} onClose={() => setLinkOpen(false)} />
-          )}
+          <AnimatePresence>
+            {linkOpen && (
+              <PublicLinkPopover key="link" url={publicUrl} onClose={() => setLinkOpen(false)} />
+            )}
+          </AnimatePresence>
         </div>
 
         <div style={{
@@ -162,31 +179,45 @@ export function TopBar() {
   )
 }
 
+// Pasar de BORRADOR a PUBLICADO es el momento que el asesor está esperando:
+// el chip se cambia con un swap explícito en vez de mutar el texto en su sitio.
 function StatusChip({ published, onClick }: { published: boolean; onClick: () => void }) {
-  if (published) {
-    return (
-      <span
-        onClick={onClick}
-        title="Ver enlace público"
-        style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          fontSize: 11, fontWeight: 800, letterSpacing: '.5px',
-          color: '#38D030', cursor: 'pointer',
-          background: 'rgba(56,208,48,.14)', border: '1px solid rgba(56,208,48,.35)',
-          padding: '3px 9px', borderRadius: 6,
-        }}>
-        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#38D030' }} />
-        PUBLICADO
-      </span>
-    )
-  }
   return (
-    <span style={{
-      fontSize: 11, fontWeight: 800, letterSpacing: '.5px',
-      color: '#C99A3A',
-      background: 'rgba(201,154,58,.14)', border: '1px solid rgba(201,154,58,.3)',
-      padding: '3px 9px', borderRadius: 6,
-    }}>BORRADOR</span>
+    <AnimatePresence mode="wait" initial={false}>
+      {published ? (
+        <m.span
+          key="publicado"
+          onClick={onClick}
+          title="Ver enlace público"
+          variants={panelSwap} initial="initial" animate="animate" exit="exit"
+          transition={LAYOUT}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            fontSize: 11, fontWeight: 800, letterSpacing: '.5px',
+            color: '#38D030', cursor: 'pointer',
+            background: 'rgba(56,208,48,.14)', border: '1px solid rgba(56,208,48,.35)',
+            padding: '3px 9px', borderRadius: 6,
+          }}>
+          <m.span
+            initial={{ scale: 0 }} animate={{ scale: 1 }}
+            transition={{ ...POP, delay: 0.06 }}
+            style={{ width: 7, height: 7, borderRadius: '50%', background: '#38D030' }}
+          />
+          PUBLICADO
+        </m.span>
+      ) : (
+        <m.span
+          key="borrador"
+          variants={panelSwap} initial="initial" animate="animate" exit="exit"
+          transition={LAYOUT}
+          style={{
+            fontSize: 11, fontWeight: 800, letterSpacing: '.5px',
+            color: '#C99A3A',
+            background: 'rgba(201,154,58,.14)', border: '1px solid rgba(201,154,58,.3)',
+            padding: '3px 9px', borderRadius: 6,
+          }}>BORRADOR</m.span>
+      )}
+    </AnimatePresence>
   )
 }
 
@@ -210,11 +241,15 @@ function PublicLinkPopover({ url, onClose }: { url: string; onClose: () => void 
   return (
     <>
       <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={onClose} />
-      <div style={{
-        position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 41,
-        width: 320, background: '#1E1E1E', border: '1px solid #303030',
-        borderRadius: 12, padding: 14, boxShadow: '0 14px 40px rgba(0,0,0,.6)',
-      }}>
+      <m.div
+        variants={popover} initial="initial" animate="animate" exit="exit"
+        transition={POP}
+        style={{
+          position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 41,
+          transformOrigin: 'top right',
+          width: 320, background: '#1E1E1E', border: '1px solid #303030',
+          borderRadius: 12, padding: 14, boxShadow: '0 14px 40px rgba(0,0,0,.6)',
+        }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#38D030' }} />
           <span style={{ fontSize: 13, fontWeight: 800, color: '#ECEEEF' }}>Tu landing está publicada</span>
@@ -234,8 +269,11 @@ function PublicLinkPopover({ url, onClose }: { url: string; onClose: () => void 
               fontFamily: 'monospace', outline: 'none', boxSizing: 'border-box',
             }}
           />
-          <button
+          <m.button
             onClick={copy}
+            whileTap={{ scale: 0.94 }}
+            animate={copied ? { scale: [1, 1.08, 1] } : { scale: 1 }}
+            transition={POP}
             style={{
               flexShrink: 0, padding: '8px 12px', borderRadius: 7, cursor: 'pointer',
               background: copied ? '#38D030' : 'rgba(56,208,48,.14)',
@@ -244,7 +282,7 @@ function PublicLinkPopover({ url, onClose }: { url: string; onClose: () => void 
             }}
           >
             {copied ? 'Copiado ✓' : 'Copiar'}
-          </button>
+          </m.button>
         </div>
 
         <a
@@ -260,7 +298,7 @@ function PublicLinkPopover({ url, onClose }: { url: string; onClose: () => void 
         >
           Abrir en nueva pestaña ↗
         </a>
-      </div>
+      </m.div>
     </>
   )
 }

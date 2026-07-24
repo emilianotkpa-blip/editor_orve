@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { AnimatePresence, m } from 'motion/react'
 import { useLandingStore, type ActiveTool } from '../../store/useLandingStore'
 import type { ElementoTipo } from '../../types/landing'
+import { LAYOUT, POP } from '../../lib/motion'
 
 type ToolDef = { id: ActiveTool; label: string; shortcut: string; icon: React.ReactNode }
 
@@ -64,19 +66,28 @@ export function IconRail() {
       ))}
 
       {/* place-mode hint */}
-      {activeTool !== 'select' && (
-        <div style={{
-          position: 'absolute', left: 62, top: '50%', transform: 'translateY(-50%)',
-          background: '#1B2A1C', border: '1px solid rgba(56,208,48,.3)',
-          borderRadius: 8, padding: '8px 12px', whiteSpace: 'nowrap', zIndex: 100,
-          fontSize: 11, fontWeight: 700, color: '#38D030',
-          pointerEvents: 'none',
-        }}>
-          Click en canvas para colocar
-          <br />
-          <span style={{ color: '#5A8060', fontWeight: 600 }}>Esc o clic aquí para cancelar</span>
-        </div>
-      )}
+      <AnimatePresence>
+        {activeTool !== 'select' && (
+          <m.div
+            key="hint"
+            initial={{ opacity: 0, x: -8, y: '-50%' }}
+            animate={{ opacity: 1, x: 0,  y: '-50%' }}
+            exit={{    opacity: 0, x: -8, y: '-50%' }}
+            transition={POP}
+            style={{
+              position: 'absolute', left: 62, top: '50%',
+              background: '#1B2A1C', border: '1px solid rgba(56,208,48,.3)',
+              borderRadius: 8, padding: '8px 12px', whiteSpace: 'nowrap', zIndex: 100,
+              fontSize: 11, fontWeight: 700, color: '#38D030',
+              pointerEvents: 'none',
+            }}
+          >
+            Click en canvas para colocar
+            <br />
+            <span style={{ color: '#5A8060', fontWeight: 600 }}>Esc o clic aquí para cancelar</span>
+          </m.div>
+        )}
+      </AnimatePresence>
 
       <div style={{ flex: 1 }} />
 
@@ -92,28 +103,40 @@ function RailBtn({
   onClick: () => void; onMouseEnter: () => void; onMouseLeave: () => void
 }) {
   return (
-    <div
+    <m.div
       title={label}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      whileHover={{ scale: 1.08 }}
+      whileTap={{ scale: 0.92 }}
       style={{
+        position: 'relative',
         width: 42, height: 42, borderRadius: 10,
-        background: isPlaceMode
-          ? 'rgba(56,208,48,.22)'
-          : active ? 'rgba(56,208,48,.12)' : 'transparent',
-        border: isPlaceMode
-          ? '1.5px solid rgba(56,208,48,.6)'
-          : active ? '1px solid rgba(56,208,48,.25)' : '1px solid transparent',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         cursor: 'pointer',
         color: active ? '#38D030' : '#6C7278',
-        transition: 'all .14s',
-        boxShadow: isPlaceMode ? '0 0 8px rgba(56,208,48,.18)' : 'none',
+        transition: 'color .14s',
       }}
     >
-      {children}
-    </div>
+      {/* Un solo fondo compartido por todo el rail: al cambiar de herramienta
+          se desliza al botón nuevo en vez de prender y apagar dos cuadros. */}
+      {active && (
+        <m.div
+          layoutId="rail-activo"
+          transition={LAYOUT}
+          style={{
+            position: 'absolute', inset: 0, borderRadius: 10,
+            background: isPlaceMode ? 'rgba(56,208,48,.22)' : 'rgba(56,208,48,.12)',
+            border: isPlaceMode
+              ? '1.5px solid rgba(56,208,48,.6)'
+              : '1px solid rgba(56,208,48,.25)',
+            boxShadow: isPlaceMode ? '0 0 8px rgba(56,208,48,.18)' : 'none',
+          }}
+        />
+      )}
+      <span style={{ position: 'relative', zIndex: 1, display: 'flex' }}>{children}</span>
+    </m.div>
   )
 }
 

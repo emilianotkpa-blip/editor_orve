@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { AnimatePresence, m } from 'motion/react'
 import { useLandingStore } from '../../store/useLandingStore'
 import type { Geometry, LandingElemento } from '../../types/landing'
 import { apiUploadImage, apiCheckSlug } from '../../api/webhooks'
@@ -10,6 +11,7 @@ import { getCampos, newCampo, CAMPO_TIPOS, CAMPO_TIPO_LABEL } from '../../lib/fo
 import type { FormCampo, FondoAjustes, ProyectoCard } from '../../types/landing'
 import { OrveLogo, type LogoVariante, type LogoTinta } from '../shared/Brand'
 import { logoGeo, logoLimites, margenSeguro } from '../../lib/marca'
+import { PANEL, POP } from '../../lib/motion'
 
 function newProyectoCard(): ProyectoCard {
   return {
@@ -164,26 +166,44 @@ export function InspectorPanel() {
         </div>
       </div>
 
-      {el.bloqueado && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          padding: '8px 14px', background: 'rgba(201,154,58,.12)',
-          borderBottom: '1px solid var(--ed-border)', color: '#C99A3A',
-          fontSize: 11, fontWeight: 700,
-        }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-          Bloqueado. Desbloquea para editar.
-        </div>
-      )}
+      <AnimatePresence initial={false}>
+        {el.bloqueado && (
+          <m.div
+            key="aviso-bloqueo"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={PANEL}
+            style={{ overflow: 'hidden', flexShrink: 0 }}
+          >
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px 14px', background: 'rgba(201,154,58,.12)',
+              borderBottom: '1px solid var(--ed-border)', color: '#C99A3A',
+              fontSize: 11, fontWeight: 700,
+            }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+              Bloqueado. Desbloquea para editar.
+            </div>
+          </m.div>
+        )}
+      </AnimatePresence>
 
-      {/* scrollable body (locked → not editable) */}
-      <div
+      {/* scrollable body (locked → not editable)
+          mode="wait": el panel viejo termina de salir antes de que entre el
+          nuevo. Con dos paneles superpuestos el scroll salta y se lee sucio. */}
+      <AnimatePresence mode="wait" initial={false}>
+      <m.div
         key={el.id}
-        className="ed-panel-in"
+        // La opacidad va aquí y no en el style: el bloqueo la baja a .5 y una
+        // variante compartida la volvería a subir a 1 al animar la entrada.
+        initial={{ opacity: 0, x: 10 }}
+        animate={{ opacity: el.bloqueado ? 0.5 : 1, x: 0 }}
+        exit={{ opacity: 0, x: -8 }}
+        transition={PANEL}
         style={{
           flex: 1, overflowY: 'auto', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 0,
           pointerEvents: el.bloqueado ? 'none' : 'auto',
-          opacity: el.bloqueado ? 0.5 : 1,
         }}
       >
 
@@ -284,7 +304,8 @@ export function InspectorPanel() {
         {/* ── effects (all elements) ── */}
         <EfectosControls el={el} patchStyle={patchStyle} soloOpacidad={esLogo} />
 
-      </div>
+      </m.div>
+      </AnimatePresence>
     </div>
   )
 }
@@ -2068,21 +2089,23 @@ function HeaderActionBtn({
   const [hov, setHov] = useState(false)
   const lit = hov || active
   return (
-    <div
+    <m.div
       title={title}
       onClick={onClick}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
+      whileTap={{ scale: 0.88 }}
+      transition={POP}
       style={{
         width: 26, height: 26, borderRadius: 6,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         cursor: 'pointer',
         background: lit ? (danger ? 'rgba(255,80,80,.15)' : active ? 'rgba(201,154,58,.18)' : 'rgba(56,208,48,.12)') : 'transparent',
         color: lit ? (danger ? '#FF6B6B' : active ? '#C99A3A' : '#38D030') : 'var(--ed-text-3)',
-        transition: 'all .12s',
+        transition: 'background-color .12s, color .12s',
       }}
     >
       {children}
-    </div>
+    </m.div>
   )
 }
