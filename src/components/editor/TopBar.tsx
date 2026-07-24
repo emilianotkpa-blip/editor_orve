@@ -39,17 +39,20 @@ export function TopBar() {
 
   return (
     <div style={{
-      position: 'relative', height: 52, flexShrink: 0,
+      position: 'relative', height: 64, flexShrink: 0,
       background: 'var(--ed-bar)', borderBottom: '1px solid var(--ed-border-2)',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 14px', zIndex: 30,
     }}>
       {/* left: logo + breadcrumb + status */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {/* logotipo oficial (ya trae el «ORVE») + marca del producto DVD */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
-          <OrveLogo height={26} tinta={theme === 'dark' ? 'blanco' : 'color'} />
-          <DiamondMark size={26} />
+        {/* Logotipo oficial (ya trae el «ORVE») + marca del producto DVD.
+            El lockup se pinta lo mas grande que permite la barra: a 26 px de
+            alto medía ~65 px de ancho y quedaba ilegible, muy por debajo de lo
+            que pide el manual (min. 190 x 76 para piezas de marca). */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <OrveLogo height={42} tinta={theme === 'dark' ? 'blanco' : 'color'} />
+          <DiamondMark size={28} />
         </div>
         <span style={{ width: 1, height: 22, background: 'var(--ed-border-2)' }} />
         <span style={{ color: 'var(--ed-text)', fontWeight: 800, fontSize: 13 }}>Mi Landing</span>
