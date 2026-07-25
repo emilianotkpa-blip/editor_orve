@@ -3,7 +3,8 @@ import type { LandingConfig, LandingElemento, Geometry, Viewport, ElementoTipo, 
 import { DEFAULT_CONFIG, createDefaultElement, createDefaultSection, cloneSection } from '../types/landing'
 import { apiLoadLanding, apiSaveLanding, apiSignedUrls } from '../api/webhooks'
 import { isDisplayableUrl } from '../lib/images'
-import { softSlugify } from '../lib/layout'
+import { softSlugify, STAGE_W } from '../lib/layout'
+import { getBloque } from '../lib/bloques'
 
 // Collect every storage path referenced by image / gallery elements that still
 // needs signing (i.e. not already an http/blob/data URL).
@@ -175,6 +176,11 @@ interface LandingStore {
   updateElementContent: (sectionId: string, elementId: string, content: Partial<LandingElemento['contenido']>) => void
 
   addElement: (sectionId: string, tipo: ElementoTipo, x?: number, y?: number) => void
+  addBloque: (sectionId: string, bloqueId: string, x: number, y: number) => void
+  // Sección sobre la que se está arrastrando un bloque de la paleta. La pinta
+  // el Canvas con el mismo indicador de drop que ya usa al mover elementos.
+  dropSectionId: string | null
+  setDropSection: (id: string | null) => void
   deleteElement: (sectionId: string, elementId: string) => void
   duplicateElement: (sectionId: string, elementId: string) => void
   reassignElement: (fromSectionId: string, toSectionId: string, elementId: string, x: number, y: number) => void
@@ -452,6 +458,59 @@ export const useLandingStore = create<LandingStore>((set, get) => {
       },
       selectedElementId: newEl.id,
       selectedIds: [newEl.id],
+      activeTool: 'select',
+      isDirty: true,
+      saveStatus: 'unsaved' as const,
+    }))
+  },
+
+  dropSectionId: null,
+  setDropSection: (dropSectionId) => set({ dropSectionId }),
+
+  // Suelta un bloque pre-armado completo. Un solo record(): deshacer quita el
+  // bloque entero, no pieza por pieza. (x, y) es dónde cayó el puntero dentro
+  // de la sección; el bloque se centra ahí y se acota para no salirse.
+  addBloque: (sectionId, bloqueId, x, y) => {
+    const bloque = getBloque(bloqueId)
+    if (!bloque) return
+    const state = get()
+    const sec = state.config.secciones.find((s) => s.id === sectionId)
+    if (!sec) return
+
+    record()
+
+    const maxZ = sec.elementos.reduce(
+      (m, el) => Math.max(m, el.geometria.escritorio.z, el.geometria.movil.z), 0)
+
+    const altoSec = sec.altura?.escritorio ?? 580
+    const baseX = Math.round(Math.max(0, Math.min(STAGE_W - bloque.w, x - bloque.w / 2)))
+    const baseY = Math.round(Math.max(0, Math.min(altoSec - bloque.h, y - bloque.h / 2)))
+
+    const sello = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`
+    const nuevos: LandingElemento[] = bloque.piezas.map((p, i) => {
+      // La geometría móvil se refleja de escritorio: el viewport móvil es una
+      // vista escalada del de escritorio y no lee su propia geometría.
+      const geo = { x: baseX + p.x, y: baseY + p.y, w: p.w, h: p.h, z: maxZ + i + 1 }
+      return {
+        id: `${p.tipo}_${sello}${i}`,
+        tipo: p.tipo,
+        contenido: { ...p.contenido },
+        estilo: { ...p.estilo },
+        geometria: { escritorio: { ...geo }, movil: { ...geo } },
+      }
+    })
+
+    set((s) => ({
+      config: {
+        ...s.config,
+        secciones: s.config.secciones.map((sc) =>
+          sc.id !== sectionId ? sc : { ...sc, elementos: [...sc.elementos, ...nuevos] }
+        ),
+      },
+      // Todo el bloque queda seleccionado: se puede reacomodar de una vez.
+      selectedElementId: nuevos[0]?.id ?? null,
+      selectedIds: nuevos.map((e) => e.id),
+      activeSectionId: sectionId,
       activeTool: 'select',
       isDirty: true,
       saveStatus: 'unsaved' as const,

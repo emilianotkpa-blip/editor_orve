@@ -3,6 +3,7 @@ import { AnimatePresence, m } from 'motion/react'
 import { useLandingStore } from '../../store/useLandingStore'
 import type { ElementoTipo } from '../../types/landing'
 import { LAYOUT, POP, popover, fila, accionFila } from '../../lib/motion'
+import { BloquesPanel, TabsPanel } from './BloquesPanel'
 
 const TIPO_LABELS: Record<ElementoTipo, string> = {
   texto:      'Texto',
@@ -24,6 +25,7 @@ export function LayersPanel() {
     editingPage, setEditingPage, toggleLock,
     addSection, deleteSection, duplicateSection, moveSection,
   } = useLandingStore()
+  const [tab, setTab] = useState<'capas' | 'bloques'>('bloques')
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [showAddMenu, setShowAddMenu] = useState(false)
   const [dragId, setDragId]       = useState<string | null>(null)
@@ -54,14 +56,12 @@ export function LayersPanel() {
     }}>
       {/* header */}
       <div style={{
-        padding: '10px 14px',
+        padding: '10px 10px 10px 12px',
         borderBottom: '1px solid var(--ed-border)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6,
       }}>
-        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.8px', color: 'var(--ed-text-3)', textTransform: 'uppercase' }}>
-          Capas
-        </span>
-        <div style={{ position: 'relative' }}>
+        <TabsPanel tab={tab} onTab={setTab} />
+        <div style={{ position: 'relative', display: tab === 'capas' ? 'block' : 'none' }}>
           <button
             onClick={() => setShowAddMenu((v) => !v)}
             style={{
@@ -117,10 +117,12 @@ export function LayersPanel() {
         />
       )}
 
+      {tab === 'bloques' && <BloquesPanel />}
+
       {/* layers list
           layoutScroll: la lista scrollea, y sin esto Motion mide las filas
           contra el viewport y el reacomodo sale desplazado. */}
-      <m.div layoutScroll style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+      <m.div layoutScroll style={{ flex: 1, overflowY: 'auto', padding: '8px 0', display: tab === 'capas' ? 'block' : 'none' }}>
         {/* page properties entry */}
         <div
           onClick={() => setEditingPage(true)}

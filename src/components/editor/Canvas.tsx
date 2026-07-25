@@ -27,6 +27,7 @@ export function Canvas() {
     activeTool, setActiveTool, addElement, deleteSelected, moveSelected, commitGroupGeometry,
     signedUrls, activeSectionId, setActiveSection,
     reassignElement, setSectionHeight, undo, redo, getSelectedElement,
+    dropSectionId,
   } = useLandingStore()
 
   const frameRef   = useRef<HTMLDivElement>(null)
@@ -299,11 +300,16 @@ export function Canvas() {
           // ── desktop: editable section (its own coordinate space) ──
           const isActive  = sec.id === activeSectionId
           const dragLift  = isDragging && sec.id === selectedSectionId
-          const isHover   = hoverSection === sec.id
+          // Mismo indicador para dos gestos: mover un elemento a otra sección,
+          // y traer un bloque nuevo desde la paleta.
+          const isHover   = hoverSection === sec.id || dropSectionId === sec.id
 
           return (
             <div
               key={sec.id}
+              // Lo lee el drop de la paleta de bloques: al soltar se busca en
+              // la pila bajo el puntero el primero que traiga este atributo.
+              data-section-id={sec.id}
               ref={(node) => { if (node) sectionEls.current.set(sec.id, node); else sectionEls.current.delete(sec.id) }}
               onClick={isPlacing ? undefined : () => { setActiveSection(sec.id); selectElement(null) }}
               style={{
