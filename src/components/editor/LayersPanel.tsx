@@ -18,7 +18,7 @@ const TIPO_LABELS: Record<ElementoTipo, string> = {
 
 const TIPO_ORDER: ElementoTipo[] = ['texto', 'imagen', 'boton', 'bloque', 'galeria', 'proyectos', 'formulario', 'logo']
 
-export function LayersPanel() {
+export function LayersPanel({ onColapsar }: { onColapsar?: () => void }) {
   const {
     config, selectedIds, selectElement, toggleSelectElement, addElement, deleteElement,
     duplicateElement, reorderLayers, activeSectionId, setActiveSection,
@@ -61,6 +61,7 @@ export function LayersPanel() {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6,
       }}>
         <TabsPanel tab={tab} onTab={setTab} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <div style={{ position: 'relative', display: tab === 'capas' ? 'block' : 'none' }}>
           <button
             onClick={() => setShowAddMenu((v) => !v)}
@@ -106,6 +107,28 @@ export function LayersPanel() {
               </m.div>
             )}
           </AnimatePresence>
+        </div>
+
+          {/* colapsar el panel */}
+          {onColapsar && (
+            <m.button
+              onClick={onColapsar}
+              title="Ocultar estructura"
+              whileHover={{ scale: 1.06 }}
+              whileTap={{ scale: 0.92 }}
+              transition={POP}
+              style={{
+                width: 26, height: 26, borderRadius: 6, padding: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'transparent', border: '1px solid var(--ed-border-2)',
+                color: 'var(--ed-text-3)', cursor: 'pointer',
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 6l-6 6 6 6" />
+              </svg>
+            </m.button>
+          )}
         </div>
       </div>
 

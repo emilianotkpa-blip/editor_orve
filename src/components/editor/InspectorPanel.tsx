@@ -9,7 +9,7 @@ import { FONTS, FONT_CATEGORY_LABEL, fontStack, loadFont } from '../../lib/fonts
 import { DEFAULT_SOMBRA } from '../../lib/effects'
 import { getCampos, newCampo, CAMPO_TIPOS, CAMPO_TIPO_LABEL } from '../../lib/forms'
 import type { FormCampo, FondoAjustes, ProyectoCard } from '../../types/landing'
-import { OrveLogo, type LogoVariante, type LogoTinta } from '../shared/Brand'
+import { OrveLogo, MARCA, type LogoVariante, type LogoTinta } from '../shared/Brand'
 import { logoGeo, logoLimites, margenSeguro } from '../../lib/marca'
 import { PANEL, POP } from '../../lib/motion'
 
@@ -1849,20 +1849,77 @@ function toHexColor(value: string): string {
   return '#000000'
 }
 
+// Paleta oficial ORVE — Manual de Marca 2026, p. 8. Es lo primero que ve el
+// asesor: el mockup pide que elija de una paleta de marca en vez de escribir
+// códigos hexadecimales. El campo hex sigue debajo para los casos avanzados
+// (transparencias, un color puntual fuera de marca).
+const SWATCHES: { valor: string; nombre: string }[] = [
+  { valor: MARCA.verde,       nombre: 'Verde ORVE' },
+  { valor: MARCA.verdeMedio,  nombre: 'Verde medio' },
+  { valor: MARCA.verdeOscuro, nombre: 'Verde oscuro' },
+  { valor: MARCA.verdeClaro,  nombre: 'Verde claro' },
+  { valor: MARCA.negro,       nombre: 'Negro' },
+  { valor: MARCA.negroSuave,  nombre: 'Negro suave' },
+  { valor: MARCA.gris,        nombre: 'Gris' },
+  { valor: MARCA.grisClaro,   nombre: 'Gris claro' },
+  { valor: MARCA.blanco,      nombre: 'Blanco' },
+]
+
 function ColorInput({
   label, value, onChange,
 }: {
   label: string; value: string; onChange: (v: string) => void
 }) {
+  const actual = toHexColor(value)
   return (
     <div>
-      <div style={{ fontSize: 10, color: '#4F5458', fontWeight: 700, marginBottom: 3 }}>{label}</div>
+      <div style={{ fontSize: 10, color: '#4F5458', fontWeight: 700, marginBottom: 5 }}>{label}</div>
+
+      {/* Paleta de marca */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 7 }}>
+        {SWATCHES.map((s) => {
+          const activo = toHexColor(s.valor) === actual
+          return (
+            <m.button
+              key={s.valor}
+              type="button"
+              title={s.nombre}
+              onClick={() => onChange(s.valor)}
+              whileHover={{ scale: 1.15 }}
+              whileTap={{ scale: 0.9 }}
+              transition={POP}
+              style={{
+                position: 'relative', width: 22, height: 22, borderRadius: 6,
+                background: s.valor, cursor: 'pointer', padding: 0,
+                border: s.valor.toLowerCase() === '#ffffff' ? '1px solid var(--ed-border-2)' : '1px solid rgba(0,0,0,.25)',
+                boxShadow: activo ? '0 0 0 2px var(--ed-panel), 0 0 0 3.5px #38D030' : 'none',
+              }}
+            >
+              {activo && (
+                <m.span
+                  initial={{ scale: 0 }} animate={{ scale: 1 }} transition={POP}
+                  style={{
+                    position: 'absolute', inset: 0, display: 'flex',
+                    alignItems: 'center', justifyContent: 'center',
+                    fontSize: 12, fontWeight: 900, lineHeight: 1,
+                    color: s.valor.toLowerCase() === '#ffffff' || s.valor === MARCA.verdeClaro || s.valor === MARCA.grisClaro ? '#000' : '#fff',
+                  }}
+                >
+                  ✓
+                </m.span>
+              )}
+            </m.button>
+          )
+        })}
+      </div>
+
+      {/* Selector fino + hex, para lo que se salga de la paleta */}
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
         <input
           type="color"
-          value={toHexColor(value)}
+          value={actual}
           onChange={(e) => onChange(e.target.value)}
-          title="Elegir color"
+          title="Elegir otro color"
           style={{ width: 32, height: 30, border: '1px solid var(--ed-border-2)', borderRadius: 6, background: 'var(--ed-input)', padding: 2, cursor: 'pointer', flexShrink: 0 }}
         />
         <input
