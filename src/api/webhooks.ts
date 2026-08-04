@@ -1,6 +1,6 @@
 import type { LandingConfig } from '../types/landing'
 
-const BASE = 'https://bonos-n8n-agentes-ia.be197l.easypanel.host/webhook'
+const BASE = 'https://diamante-de-las-ventas-n8n.l2uxzq.easypanel.host/webhook'
 const KEY  = 'orve-dvd-2026-xK9m'
 
 const headers = {
