@@ -15,6 +15,7 @@ const TOOLS: ToolDef[] = [
   { id: 'galeria',   label: 'Galería',        shortcut: 'G', icon: <GalIcon /> },
   { id: 'proyectos', label: 'Proyectos',      shortcut: 'P', icon: <ProyIcon /> },
   { id: 'formulario',label: 'Formulario',     shortcut: 'F', icon: <FormIcon /> },
+  { id: 'video',     label: 'Video',          shortcut: 'D', icon: <VideoIcon /> },
   { id: 'logo',      label: 'Logo ORVE',      shortcut: 'L', icon: <LogoIcon /> },
 ]
 
@@ -157,6 +158,15 @@ function ZoomDisplay() {
 }
 
 // ── icons ─────────────────────────────────────────────────────────────────
+
+function VideoIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="2" y="4" width="20" height="16" rx="3" />
+      <path d="M10 9l5 3-5 3V9z" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
 
 function PointerIcon() {
   return (

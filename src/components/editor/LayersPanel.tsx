@@ -14,9 +14,10 @@ const TIPO_LABELS: Record<ElementoTipo, string> = {
   bloque:     'Bloque de color',
   proyectos:  'Proyectos',
   logo:       'Logo ORVE',
+  video:      'Video',
 }
 
-const TIPO_ORDER: ElementoTipo[] = ['texto', 'imagen', 'boton', 'bloque', 'galeria', 'proyectos', 'formulario', 'logo']
+const TIPO_ORDER: ElementoTipo[] = ['texto', 'imagen', 'boton', 'bloque', 'galeria', 'proyectos', 'formulario', 'video', 'logo']
 
 export function LayersPanel({ onColapsar }: { onColapsar?: () => void }) {
   const {

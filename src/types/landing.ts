@@ -1,6 +1,6 @@
 export type Viewport = 'escritorio' | 'movil'
 
-export type ElementoTipo = 'imagen' | 'texto' | 'boton' | 'galeria' | 'formulario' | 'bloque' | 'proyectos' | 'logo'
+export type ElementoTipo = 'imagen' | 'texto' | 'boton' | 'galeria' | 'formulario' | 'bloque' | 'proyectos' | 'logo' | 'video'
 
 export interface ProyectoCard {
   id: string
@@ -163,6 +163,13 @@ const TIPO_DEFAULTS: Record<ElementoTipo, ElementDefaults> = {
     w: 280, h: 180,
     contenido: {},
     estilo: { bgColor: '#26323B', opacidad: 1, radio: 8 },
+  },
+  // Video incrustado: la asesora solo pega el link (YouTube, Google Drive,
+  // Dropbox o Vimeo) y se detecta el proveedor solo. 16:9 por defecto.
+  video: {
+    w: 480, h: 270,
+    contenido: { url: '' },
+    estilo: { radio: 12, opacidad: 1 },
   },
   // Logo oficial ORVE. 240×97 respeta la proporción 2.488:1 del logotipo
   // horizontal y cae dentro del rango del manual (190..550 de ancho).

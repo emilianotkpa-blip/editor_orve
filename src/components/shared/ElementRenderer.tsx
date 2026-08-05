@@ -67,6 +67,7 @@ export const ElementRenderer = forwardRef<HTMLDivElement, Props>(
         {element.tipo === 'galeria'    && <GaleriaEl   element={element} signedUrls={signedUrls} />}
         {element.tipo === 'proyectos'  && <ProyectosEl element={element} signedUrls={signedUrls} interactive={interactive} />}
         {element.tipo === 'formulario' && <FormularioEl element={element} interactive={interactive} />}
+        {element.tipo === 'video'      && <VideoEl      element={element} interactive={interactive} />}
         {isSelected && <SelectionRing locked={element.bloqueado} />}
       </div>
     )
@@ -166,6 +167,61 @@ function ImagePlaceholder({ label, spinner }: { label: string; spinner?: boolean
         {label}
       </span>
     </div>
+  )
+}
+
+// Detecta el proveedor del link y devuelve cómo reproducirlo.
+export function videoInfo(raw: string): { kind: 'iframe' | 'video'; src: string } | null {
+  const url = (raw || '').trim()
+  if (!url) return null
+  let m: RegExpMatchArray | null
+  if ((m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{6,})/)))
+    return { kind: 'iframe', src: `https://www.youtube.com/embed/${m[1]}` }
+  if (
+    (m = url.match(/drive\.google\.com\/file\/d\/([\w-]+)/)) ||
+    (m = url.match(/drive\.google\.com\/open\?id=([\w-]+)/))
+  )
+    return { kind: 'iframe', src: `https://drive.google.com/file/d/${m[1]}/preview` }
+  if ((m = url.match(/vimeo\.com\/(\d+)/)))
+    return { kind: 'iframe', src: `https://player.vimeo.com/video/${m[1]}` }
+  if (/dropbox\.com/.test(url)) {
+    const direct = url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace(/[?&](dl|raw)=\d/g, '')
+    return { kind: 'video', src: direct + (direct.includes('?') ? '&raw=1' : '?raw=1') }
+  }
+  if (/\.(mp4|webm|ogg|mov)($|\?)/i.test(url)) return { kind: 'video', src: url }
+  return { kind: 'iframe', src: url }
+}
+
+function VideoEl({ element, interactive }: { element: LandingElemento; interactive: boolean }) {
+  const info = videoInfo((element.contenido.url as string) || '')
+  const radio = element.estilo.radio ?? 12
+  if (!info) {
+    return (
+      <div
+        style={{
+          width: '100%', height: '100%', borderRadius: radio, display: 'flex',
+          alignItems: 'center', justifyContent: 'center', textAlign: 'center',
+          background: 'rgba(255,255,255,0.06)', border: '1px dashed rgba(255,255,255,0.25)',
+          color: 'rgba(255,255,255,0.7)', fontSize: 13, padding: 12,
+        }}
+      >
+        Pega el link del video (YouTube, Drive, Dropbox o Vimeo) en el panel derecho.
+      </div>
+    )
+  }
+  const common: React.CSSProperties = {
+    width: '100%', height: '100%', border: 0, borderRadius: radio, display: 'block',
+    background: '#000', pointerEvents: interactive ? 'auto' : 'none',
+  }
+  if (info.kind === 'video') return <video src={info.src} controls playsInline style={common} />
+  return (
+    <iframe
+      src={info.src}
+      title="Video"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+      allowFullScreen
+      style={common}
+    />
   )
 }
 

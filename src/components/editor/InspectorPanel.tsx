@@ -302,6 +302,9 @@ export function InspectorPanel() {
         {el.tipo === 'logo' && (
           <LogoInspector el={el} patchContent={patchContent} ancho={geo.w ?? 0} setAncho={setLogoAncho} readOnly={isMobile} />
         )}
+        {el.tipo === 'video' && (
+          <VideoInspector el={el} patchStyle={patchStyle} patchContent={patchContent} />
+        )}
 
         <Divider />
 
@@ -517,6 +520,32 @@ function BloqueInspector({ el, patchStyle }: SubProps) {
         Forma decorativa. Usa las capas para mandarla al frente o al fondo.
       </div>
     </Section>
+  )
+}
+
+function VideoInspector({ el, patchStyle, patchContent }: SubProps) {
+  return (
+    <>
+      <Section title="Video">
+        <Textarea
+          label="Link del video"
+          value={(el.contenido.url as string) ?? ''}
+          onChange={(v) => patchContent({ url: v })}
+        />
+        <p style={{ fontSize: 11, color: 'var(--ed-text-3)', marginTop: 6, lineHeight: 1.4 }}>
+          Pega un link de <b>YouTube</b>, <b>Google Drive</b>, <b>Dropbox</b> o <b>Vimeo</b>. Se
+          detecta solo. (En Drive/Dropbox el archivo debe ser público / “cualquiera con el link”.)
+        </p>
+      </Section>
+      <Divider />
+      <Section title="Estilo">
+        <NumInput
+          label="Redondeo"
+          value={el.estilo.radio ?? 12}
+          onChange={(v) => patchStyle({ radio: v })}
+        />
+      </Section>
+    </>
   )
 }
 
