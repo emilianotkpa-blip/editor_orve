@@ -4,7 +4,7 @@ import { useLandingStore } from '../../store/useLandingStore'
 import type { Geometry, LandingElemento } from '../../types/landing'
 import { apiUploadImage, apiCheckSlug } from '../../api/webhooks'
 import { slugify } from '../../lib/layout'
-import { validateImageFile, compressImage, resolveSrc, ALLOWED_IMAGE_TYPES, ALLOWED_LABEL } from '../../lib/images'
+import { validateImageFile, compressImage, resolveSrc, convertirSiHeic, ALLOWED_IMAGE_TYPES, ALLOWED_LABEL } from '../../lib/images'
 import { FONTS, FONT_CATEGORY_LABEL, fontStack, loadFont } from '../../lib/fonts'
 import { DEFAULT_SOMBRA } from '../../lib/effects'
 import { getCampos, newCampo, CAMPO_TIPOS, CAMPO_TIPO_LABEL } from '../../lib/forms'
@@ -49,17 +49,19 @@ function useImageUpload() {
   const [busy, setBusy]   = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function upload(file: File): Promise<string | null> {
-    const v = validateImageFile(file)
-    if (!v.ok) { setError(v.error!); return null }
+  async function upload(rawFile: File): Promise<string | null> {
     setBusy(true); setError(null)
     try {
+      // Fotos de iPhone (HEIC/HEIF) → JPEG automáticamente ANTES de validar.
+      const file = await convertirSiHeic(rawFile)
+      const v = validateImageFile(file)
+      if (!v.ok) { setError(v.error!); return null }
       const c = await compressImage(file)
       const res = await apiUploadImage({ email, slug, filename: c.filename, mime: c.mime, data: c.base64 })
       if (!res.ok || !res.path) { setError(res.error || 'No se pudo subir la imagen'); return null }
       return res.path
     } catch {
-      setError('No se pudo subir la imagen')
+      setError('No se pudo procesar la imagen. Intenta con una JPG o PNG.')
       return null
     } finally {
       setBusy(false)
@@ -69,7 +71,9 @@ function useImageUpload() {
   return { upload, busy, error, setError }
 }
 
-const ACCEPT = ALLOWED_IMAGE_TYPES.join(',')
+// Incluye HEIC/HEIF para que el selector deje elegir fotos de iPhone (se
+// convierten a JPEG automáticamente al subir).
+const ACCEPT = [...ALLOWED_IMAGE_TYPES, 'image/heic', 'image/heif', '.heic', '.heif'].join(',')
 
 export function InspectorPanel() {
   const {

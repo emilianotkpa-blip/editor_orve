@@ -26,6 +26,25 @@ export function validateImageFile(file: File): FileValidation {
   return { ok: true }
 }
 
+// ── HEIC/HEIF (fotos de iPhone) ─────────────────────────────────────────────
+// Los navegadores (salvo Safari) no decodifican HEIC, así que la foto del
+// iPhone se rechazaba. La convertimos a JPEG en el navegador ANTES de validar.
+const HEIC_RE = /\.(heic|heif)$/i
+export function esHeic(file: File): boolean {
+  const t = (file.type || '').toLowerCase()
+  return t === 'image/heic' || t === 'image/heif' || HEIC_RE.test(file.name || '')
+}
+
+export async function convertirSiHeic(file: File): Promise<File> {
+  if (!esHeic(file)) return file
+  // Import dinámico: la librería solo se carga cuando de verdad hay un HEIC.
+  const heic2any = (await import('heic2any')).default
+  const out = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 })
+  const blob = (Array.isArray(out) ? out[0] : out) as Blob
+  const base = (file.name || 'foto').replace(/\.[^.]+$/, '') || 'foto'
+  return new File([blob], `${base}.jpg`, { type: 'image/jpeg' })
+}
+
 // Read a File/Blob as raw base64 (no data: prefix) for JSON transport.
 export function fileToBase64(file: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
