@@ -1146,6 +1146,22 @@ function FormularioInspector({ el, patchStyle, patchContent }: SubProps) {
             onChange={(v) => patchContent({ boton: v })}
           />
         </div>
+        <div style={{ marginTop: 8 }}>
+          <TextInput
+            label="Material a desbloquear (URL, opcional 🔒)"
+            placeholder="https://… (PDF, guía, video)"
+            value={(el.contenido.materialUrl as string) ?? ''}
+            onChange={(v) => patchContent({ materialUrl: v })}
+          />
+        </div>
+        <div style={{ marginTop: 8 }}>
+          <TextInput
+            label="Texto del botón del material"
+            placeholder="Ver material"
+            value={(el.contenido.materialTexto as string) ?? ''}
+            onChange={(v) => patchContent({ materialTexto: v })}
+          />
+        </div>
       </Section>
       <Divider />
 

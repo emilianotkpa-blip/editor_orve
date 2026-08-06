@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiPublicLanding } from '../api/webhooks'
 import { ElementRenderer } from '../components/shared/ElementRenderer'
+import { PublicSlugCtx } from '../lib/public-ctx'
 import type { LandingConfig } from '../types/landing'
 import { STAGE_W } from '../lib/layout'
 import { sectionFondoLayer } from '../lib/sections'
@@ -39,7 +40,11 @@ export function PublicPage({ slug }: { slug: string }) {
   if (status === 'loading')     return <LoadingScreen />
   if (status === 'unavailable') return <UnavailableScreen slug={slug} />
 
-  return <LandingView config={config!} signedUrls={signedUrls} />
+  return (
+    <PublicSlugCtx.Provider value={slug}>
+      <LandingView config={config!} signedUrls={signedUrls} />
+    </PublicSlugCtx.Provider>
+  )
 }
 
 // ── Landing View ───────────────────────────────────────────────────────────

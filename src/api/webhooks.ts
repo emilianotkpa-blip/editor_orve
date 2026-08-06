@@ -8,6 +8,28 @@ const headers = {
   'x-api-key': KEY,
 }
 
+/**
+ * Envía un lead de la encuesta/formulario de una landing pública. El backend
+ * (dvd-lead-guardar) resuelve el slug → correo del asesor dueño y lo guarda en
+ * NocoDB (tabla diamante_leads).
+ */
+export async function apiSubmitLead(
+  slug: string,
+  campos: Record<string, string>,
+  material?: string,
+): Promise<{ ok: boolean; asesor_email?: string }> {
+  try {
+    const res = await fetch(`${BASE}/dvd-lead-guardar`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ slug, campos, material: material || '' }),
+    })
+    return await res.json()
+  } catch {
+    return { ok: false }
+  }
+}
+
 export async function apiLoadLanding(email: string): Promise<{ existe: boolean; config?: LandingConfig }> {
   const res = await fetch(`${BASE}/dvd-landing-obtener`, {
     method: 'POST',

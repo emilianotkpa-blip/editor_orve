@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useState } from 'react'
+import { forwardRef, useEffect, useState, type FormEvent } from 'react'
 import type { CSSProperties } from 'react'
 import type { LandingElemento, Viewport, ProyectoCard } from '../../types/landing'
 import { resolveSrc, isDisplayableUrl } from '../../lib/images'
@@ -6,6 +6,8 @@ import { fontStack, loadFont } from '../../lib/fonts'
 import { elementBorderShadow } from '../../lib/effects'
 import { resolveButtonAction } from '../../lib/acciones'
 import { getCampos } from '../../lib/forms'
+import { usePublicSlug } from '../../lib/public-ctx'
+import { apiSubmitLead } from '../../api/webhooks'
 import { OrveLogo, type LogoVariante, type LogoTinta } from './Brand'
 import { margenSeguro } from '../../lib/marca'
 
@@ -418,6 +420,21 @@ function FormularioEl({ element, interactive }: { element: LandingElemento; inte
   const botonTx = (contenido.boton  as string) || 'Enviar'
   const campos  = getCampos(contenido)
   const [sent, setSent] = useState(false)
+  const slug = usePublicSlug()
+  const materialUrl   = (contenido.materialUrl as string) || ''
+  const materialTexto = (contenido.materialTexto as string) || 'Ver material'
+
+  function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!interactive) return
+    // Recolecta los campos (por su id = name) y los manda al backend.
+    // Fire-and-forget: mostramos el éxito aunque la red falle (no bloquea al visitante).
+    const fd = new FormData(e.currentTarget)
+    const data: Record<string, string> = {}
+    campos.forEach((c) => { data[c.id] = String(fd.get(c.id) ?? '') })
+    if (slug) apiSubmitLead(slug, data, materialUrl).catch(() => {})
+    setSent(true)
+  }
 
   const inputStyle: CSSProperties = {
     width: '100%', boxSizing: 'border-box',
@@ -447,7 +464,7 @@ function FormularioEl({ element, interactive }: { element: LandingElemento; inte
 
   return (
     <form
-      onSubmit={(e) => { e.preventDefault(); if (interactive) setSent(true) }}
+      onSubmit={onSubmit}
       style={{
         width: '100%', height: '100%',
         background: estilo.bgColor || 'rgba(20,28,22,0.92)',
@@ -461,9 +478,19 @@ function FormularioEl({ element, interactive }: { element: LandingElemento; inte
       </div>
 
       {sent ? (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: '#fff', fontWeight: 700, gap: 8, flexDirection: 'column' }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: '#fff', fontWeight: 700, gap: 12, flexDirection: 'column', padding: 8 }}>
           <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#38D030', color: '#063800', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 900 }}>✓</div>
-          ¡Gracias! Te contactaré pronto.
+          {materialUrl ? '¡Gracias! Aquí tienes tu material:' : '¡Gracias! Te contactaré pronto.'}
+          {materialUrl && (
+            <a
+              href={materialUrl}
+              target="_blank"
+              rel="noreferrer"
+              style={{ background: '#38D030', color: '#063800', borderRadius: 7, padding: '10px 18px', fontWeight: 800, fontSize: 13, textDecoration: 'none', fontFamily: 'Mulish,sans-serif' }}
+            >
+              {materialTexto}
+            </a>
+          )}
         </div>
       ) : (
         <>
