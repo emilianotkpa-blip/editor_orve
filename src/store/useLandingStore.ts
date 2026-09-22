@@ -70,6 +70,11 @@ function sanitizeConfig(raw: unknown): LandingConfig {
     branding:  r.branding,
     pagina:    r.pagina    ?? { ancho: 'completa' },
     secciones,
+    // OJO: si estos tres no se copian aqui, se pierden en silencio en cada carga
+    // (esta funcion reconstruye el objeto campo por campo).
+    modo:                r.modo ?? 'lienzo',
+    html:                r.html,
+    htmlPermitirScripts: r.htmlPermitirScripts ?? false,
   }
 }
 
@@ -166,6 +171,8 @@ interface LandingStore {
   setEditingPage: (v: boolean) => void
   setSlug: (slug: string) => void
   setPagina: (patch: Partial<NonNullable<LandingConfig['pagina']>>) => void
+  /** Modo de la landing: lienzo de siempre, o documento HTML propio. */
+  setModoPagina: (patch: Pick<Partial<LandingConfig>, 'modo' | 'html' | 'htmlPermitirScripts'>) => void
   mergeSignedUrls: (map: Record<string, string>) => void
   resolveSignedUrls: () => Promise<void>
   showToast: (type: 'success' | 'error', message: string) => void
@@ -339,6 +346,15 @@ export const useLandingStore = create<LandingStore>((set, get) => {
     record('pagina')
     set((state) => ({
       config: { ...state.config, pagina: { ...(state.config.pagina ?? { ancho: 'completa' }), ...patch } },
+      isDirty: true,
+      saveStatus: 'unsaved' as const,
+    }))
+  },
+
+  setModoPagina: (patch) => {
+    record('modoPagina')
+    set((state) => ({
+      config: { ...state.config, ...patch },
       isDirty: true,
       saveStatus: 'unsaved' as const,
     }))

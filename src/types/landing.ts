@@ -1,6 +1,6 @@
 export type Viewport = 'escritorio' | 'movil'
 
-export type ElementoTipo = 'imagen' | 'texto' | 'boton' | 'galeria' | 'formulario' | 'bloque' | 'proyectos' | 'logo' | 'video'
+export type ElementoTipo = 'imagen' | 'texto' | 'boton' | 'galeria' | 'formulario' | 'bloque' | 'proyectos' | 'logo' | 'video' | 'html'
 
 export interface ProyectoCard {
   id: string
@@ -114,6 +114,17 @@ export interface LandingConfig {
   branding?: { logo?: string }
   pagina?: EstiloPagina
   secciones: Seccion[]
+  /**
+   * 'lienzo' (por defecto) usa las secciones y elementos de siempre.
+   * 'html' ignora el lienzo y sirve el documento completo de `html`, para quien
+   * quiera traer su propia pagina ya hecha. Ausente = 'lienzo', asi que las
+   * landings que ya existen no cambian en nada.
+   */
+  modo?: 'lienzo' | 'html'
+  /** Documento completo cuando modo === 'html'. */
+  html?: string
+  /** Permite <script> dentro de ese documento. Aun asi va en iframe aislado. */
+  htmlPermitirScripts?: boolean
 }
 
 // ── Element factory ────────────────────────────────────────────────────────
@@ -179,6 +190,22 @@ const TIPO_DEFAULTS: Record<ElementoTipo, ElementDefaults> = {
     w: 240, h: 97,
     contenido: { variante: 'lockup', tinta: 'blanco' },
     estilo: { opacidad: 1 },
+  },
+  // HTML libre. Se dibuja dentro de un iframe aislado, asi que se puede pegar
+  // cualquier maquetado (secciones enteras, tablas, estilos) sin que un <script>
+  // copiado de internet pueda leer el formulario de leads ni cambiar la pagina.
+  // `permitirScripts` lo habilita solo para quien lo necesite, y aun asi el iframe
+  // sigue aislado del resto.
+  html: {
+    w: 520, h: 320,
+    // Nace VACIO a proposito: si trajera codigo de ejemplo, al pegar quedaria el
+    // ejemplo y lo pegado uno detras de otro. La pista se muestra como placeholder.
+    contenido: {
+      html: '',
+      permitirScripts: false,
+      fondo: 'transparente',
+    },
+    estilo: { radio: 8, opacidad: 1 },
   },
   proyectos: {
     w: 760, h: 348,

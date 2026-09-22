@@ -272,7 +272,11 @@ export function Canvas() {
         boxShadow: '0 8px 48px rgba(0,0,0,.7)',
         borderRadius: 10, overflow: 'hidden',
       }}>
-        {config.secciones.map((sec, idx) => {
+        {/* Modo "Traer mi HTML": el lienzo muestra TU pagina, no el diseno de bloques.
+            Antes seguia pintando el lienzo y por eso parecia que el modo no hacia nada. */}
+        {config.modo === 'html' ? (
+          <VistaHtmlPagina html={config.html ?? ''} scripts={config.htmlPermitirScripts === true} alto={620} />
+        ) : config.secciones.map((sec, idx) => {
           const sectionH = sec.altura?.escritorio ?? 580
           const fondoLayer = sectionFondoLayer(sec.fondo, signedUrls)
 
@@ -484,5 +488,38 @@ export function Canvas() {
       )}
       </div>
     </div>
+  )
+}
+
+
+// Vista del modo "Traer mi HTML" dentro del lienzo. Va en iframe aislado, igual que en
+// la pagina publica, para que lo que ves aqui sea exactamente lo que se publica.
+function VistaHtmlPagina({ html, scripts, alto }: { html: string; scripts: boolean; alto: number }) {
+  if (!html.trim()) {
+    return (
+      <div style={{
+        height: alto, display: 'flex', flexDirection: 'column', gap: 8,
+        alignItems: 'center', justifyContent: 'center', textAlign: 'center',
+        background: '#0E1411', color: 'rgba(255,255,255,.62)', padding: 32,
+      }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: 'rgba(255,255,255,.85)' }}>
+          Estás en modo «Traer mi HTML»
+        </div>
+        <div style={{ fontSize: 13, maxWidth: 440, lineHeight: 1.5 }}>
+          Pega tu documento en el panel de la derecha y aparecerá aquí mismo. O usa
+          «Partir de mi diseño actual» para empezar con lo que ya tenías.
+        </div>
+      </div>
+    )
+  }
+  const permisos = ['allow-popups', 'allow-popups-to-escape-sandbox', 'allow-forms']
+  if (scripts) permisos.push('allow-scripts')
+  return (
+    <iframe
+      srcDoc={html}
+      title="Tu HTML"
+      sandbox={permisos.join(' ')}
+      style={{ display: 'block', width: '100%', height: alto, border: 0, background: '#fff' }}
+    />
   )
 }

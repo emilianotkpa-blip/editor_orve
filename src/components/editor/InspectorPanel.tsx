@@ -12,6 +12,7 @@ import type { FormCampo, FondoAjustes, ProyectoCard } from '../../types/landing'
 import { OrveLogo, MARCA, type LogoVariante, type LogoTinta } from '../shared/Brand'
 import { logoGeo, logoLimites, margenSeguro } from '../../lib/marca'
 import { PANEL, POP } from '../../lib/motion'
+import { lienzoAHtml } from '../../lib/exportar-html'
 
 function newProyectoCard(): ProyectoCard {
   return {
@@ -305,6 +306,9 @@ export function InspectorPanel() {
         {el.tipo === 'video' && (
           <VideoInspector el={el} patchStyle={patchStyle} patchContent={patchContent} />
         )}
+        {el.tipo === 'html' && (
+          <HtmlInspector el={el} patchStyle={patchStyle} patchContent={patchContent} />
+        )}
 
         <Divider />
 
@@ -319,6 +323,52 @@ export function InspectorPanel() {
 
 // Reusable effects panel: rounded corners, opacity, shadow, border. Lives on the
 // element (color block, images, etc.).
+// Inspector del bloque de HTML. El codigo se dibuja dentro de un iframe aislado, asi
+// que aqui no hace falta filtrar nada: se ve tal cual, pero encerrado — no alcanza al
+// formulario de leads ni al resto de la pagina. La casilla de scripts solo los deja
+// correr DENTRO de ese iframe.
+function HtmlInspector({ el, patchContent }: SubProps) {
+  const scripts = el.contenido.permitirScripts === true
+  const fondoBlanco = (el.contenido.fondo ?? 'transparente') !== 'transparente'
+  return (
+    <>
+      <Section title="Código HTML">
+        <Textarea
+          label="Pega tu HTML"
+          value={(el.contenido.html as string) ?? ''}
+          onChange={(v) => patchContent({ html: v })}
+          placeholder={'<section style="padding:24px">\n  <h2>Tu título</h2>\n  <p>Tu contenido…</p>\n</section>'}
+          rows={10}
+          mono
+        />
+        <p style={{ fontSize: 11, color: 'var(--ed-text-3)', marginTop: 6, lineHeight: 1.4 }}>
+          Puede ser una sección o un documento completo. Se muestra <b>aislado</b> del resto
+          de la página: no puede tocar el formulario ni los demás bloques.
+        </p>
+        <div style={{ marginTop: 10 }}>
+          <ToggleRow
+            label="Fondo blanco"
+            checked={fondoBlanco}
+            onChange={(c) => patchContent({ fondo: c ? 'blanco' : 'transparente' })}
+          />
+          <ToggleRow
+            label="Permitir scripts"
+            checked={scripts}
+            onChange={(c) => patchContent({ permitirScripts: c })}
+          />
+        </div>
+        {scripts && (
+          <p style={{ fontSize: 11, color: '#C99A3A', marginTop: 6, lineHeight: 1.4 }}>
+            Los scripts se van a ejecutar. Actívalo solo con código que conozcas: sigue
+            aislado de la página, pero puede hacer peticiones a internet.
+          </p>
+        )}
+      </Section>
+      <Divider />
+    </>
+  )
+}
+
 function EfectosControls({ el, patchStyle, soloOpacidad }: { el: LandingElemento; patchStyle: (p: Partial<LandingElemento['estilo']>) => void; soloOpacidad?: boolean }) {
   const sombra = el.estilo.sombra ?? { ...DEFAULT_SOMBRA, activa: false }
   const borde  = el.estilo.borde ?? { ancho: 0, color: '#000000' }
@@ -1508,8 +1558,9 @@ function PageInspector() {
 // ── section inspector (no element selected) ─────────────────────────────────
 
 function SectionInspector({ sectionId }: { sectionId: string }) {
-  const { config, setSectionHeight, setSectionFondo } = useLandingStore()
+  const { config, signedUrls, setSectionHeight, setSectionFondo, setModoPagina } = useLandingStore()
   const sec = config.secciones.find((s) => s.id === sectionId)
+  const modoHtml = config.modo === 'html'
   if (!sec) return <EmptyInspector />
 
   const height  = sec.altura?.escritorio ?? 580
@@ -1532,6 +1583,60 @@ function SectionInspector({ sectionId }: { sectionId: string }) {
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px' }}>
+        <Section title="Página">
+          <SelectInput
+            label="Cómo se arma"
+            value={modoHtml ? 'html' : 'lienzo'}
+            options={[
+              { value: 'lienzo', label: 'Diseñar en el lienzo' },
+              { value: 'html',   label: 'Traer mi HTML' },
+            ]}
+            onChange={(v) => setModoPagina({ modo: v as 'lienzo' | 'html' })}
+          />
+          {modoHtml && (
+            <div style={{ marginTop: 10 }}>
+              {/* Dos caminos: partir de lo que ya hiciste, o pegar el tuyo. */}
+              <button
+                type="button"
+                onClick={() => {
+                  const ya = (config.html ?? '').trim()
+                  if (ya && !confirm('Vas a reemplazar el HTML que ya tienes escrito. ¿Seguimos?')) return
+                  setModoPagina({ html: lienzoAHtml(config, signedUrls) })
+                }}
+                style={{
+                  width: '100%', marginBottom: 8, padding: '8px 10px', borderRadius: 7,
+                  background: 'rgba(56,208,48,.12)', border: '1px solid rgba(56,208,48,.45)',
+                  color: '#38D030', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                Partir de mi diseño actual
+              </button>
+              <Textarea
+                label="Documento HTML completo"
+                value={config.html ?? ''}
+                onChange={(v) => setModoPagina({ html: v })}
+                placeholder={'<!doctype html>\n<html>\n  <body>…</body>\n</html>'}
+                rows={12}
+                mono
+              />
+              <div style={{ marginTop: 8 }}>
+                <ToggleRow
+                  label="Permitir scripts"
+                  checked={config.htmlPermitirScripts === true}
+                  onChange={(c) => setModoPagina({ htmlPermitirScripts: c })}
+                />
+              </div>
+              <p style={{ fontSize: 11, color: '#C99A3A', marginTop: 8, lineHeight: 1.45 }}>
+                En este modo se publica <b>solo tu HTML</b>: el lienzo y sus secciones se
+                ignoran. Nada se borra — vuelve a “Diseñar en el lienzo” y reaparece tal
+                como estaba.
+              </p>
+            </div>
+          )}
+        </Section>
+
+        <Divider />
+
         <Section title="Tamaño">
           <NumInput label="Altura (px)" value={height} onChange={(v) => setSectionHeight(sectionId, Math.max(160, v))} />
         </Section>
@@ -1829,9 +1934,13 @@ function TextInput({
 }
 
 function Textarea({
-  label, value, onChange,
+  label, value, onChange, placeholder, rows = 3, mono,
 }: {
   label: string; value: string; onChange: (v: string) => void
+  /** Pista visible cuando esta vacio. NO es contenido: al escribir o pegar desaparece. */
+  placeholder?: string
+  rows?: number
+  mono?: boolean
 }) {
   return (
     <div>
@@ -1840,11 +1949,15 @@ function Textarea({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => e.stopPropagation()}
-        rows={3}
+        placeholder={placeholder}
+        spellCheck={mono ? false : undefined}
+        rows={rows}
         style={{
           width: '100%', background: 'var(--ed-input)', border: '1px solid var(--ed-border-2)',
           borderRadius: 6, padding: '5px 8px', fontSize: 12, color: 'var(--ed-text)',
-          fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical', outline: 'none',
+          fontFamily: mono ? 'ui-monospace, SFMono-Regular, Menlo, monospace' : 'inherit',
+          lineHeight: mono ? 1.5 : undefined,
+          boxSizing: 'border-box', resize: 'vertical', outline: 'none',
         }}
       />
     </div>

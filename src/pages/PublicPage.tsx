@@ -73,6 +73,22 @@ export function LandingView({ config, signedUrls }: { config: LandingConfig; sig
   const sombraActiva = pagina.sombraActiva !== false
   const cardShadow   = acotada && sombraActiva ? pageContainerShadow(pagina.sombraIntensidad ?? 60) : undefined
 
+  // Pagina completa en HTML: el asesor trajo su propio documento, asi que se sirve tal
+  // cual y se ignora el lienzo. Va en un iframe aislado igual que el bloque de HTML:
+  // ocupa toda la pantalla pero no puede tocar nada de la app que lo contiene.
+  if (config.modo === 'html' && String(config.html ?? '').trim()) {
+    const permisos = ['allow-popups', 'allow-popups-to-escape-sandbox', 'allow-forms']
+    if (config.htmlPermitirScripts) permisos.push('allow-scripts')
+    return (
+      <iframe
+        srcDoc={String(config.html)}
+        title={`Carta de presentación de ${config.slug}`}
+        sandbox={permisos.join(' ')}
+        style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', border: 0 }}
+      />
+    )
+  }
+
   return (
     <div style={{
       position: 'relative',

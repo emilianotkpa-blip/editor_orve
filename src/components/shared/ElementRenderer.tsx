@@ -70,6 +70,7 @@ export const ElementRenderer = forwardRef<HTMLDivElement, Props>(
         {element.tipo === 'proyectos'  && <ProyectosEl element={element} signedUrls={signedUrls} interactive={interactive} />}
         {element.tipo === 'formulario' && <FormularioEl element={element} interactive={interactive} />}
         {element.tipo === 'video'      && <VideoEl      element={element} interactive={interactive} />}
+        {element.tipo === 'html'       && <HtmlEl       element={element} interactive={interactive} />}
         {isSelected && <SelectionRing locked={element.bloqueado} />}
       </div>
     )
@@ -223,6 +224,61 @@ function VideoEl({ element, interactive }: { element: LandingElemento; interacti
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
       allowFullScreen
       style={common}
+    />
+  )
+}
+
+// HTML libre pegado por el asesor. Va SIEMPRE dentro de un iframe con `sandbox`:
+// el codigo se ve tal cual pero queda encerrado — no puede leer el formulario de
+// leads, ni redirigir la pagina, ni tocar nada de alrededor. Sin `allow-scripts`
+// los <script> ni siquiera corren; se habilita por elemento cuando hace falta.
+function HtmlEl({ element, interactive }: { element: LandingElemento; interactive?: boolean }) {
+  const { contenido, estilo } = element
+  const html = String(contenido.html ?? '')
+  const permitirScripts = contenido.permitirScripts === true
+  const radio = estilo.radio ?? 0
+  const transparente = (contenido.fondo ?? 'transparente') === 'transparente'
+
+  if (!html.trim()) {
+    return (
+      <div
+        style={{
+          width: '100%', height: '100%', borderRadius: radio, display: 'flex',
+          alignItems: 'center', justifyContent: 'center', textAlign: 'center',
+          background: 'rgba(255,255,255,0.06)', border: '1px dashed rgba(255,255,255,0.25)',
+          color: 'rgba(255,255,255,0.7)', fontSize: 13, padding: 12,
+        }}
+      >
+        Pega tu código HTML en el panel derecho.
+      </div>
+    )
+  }
+
+  // Se envuelve para que herede tipografia y no traiga el margen por defecto del
+  // navegador; si el asesor pega un documento completo (<html>…) se respeta tal cual.
+  const esDocumento = /<html[\s>]/i.test(html)
+  const doc = esDocumento
+    ? html
+    : `<!doctype html><html><head><meta charset="utf-8">` +
+      `<meta name="viewport" content="width=device-width,initial-scale=1">` +
+      `<style>html,body{margin:0;padding:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;` +
+      `background:${transparente ? 'transparent' : '#fff'};color:inherit}` +
+      `img,video,iframe{max-width:100%}</style></head><body>${html}</body></html>`
+
+  const permisos = ['allow-popups', 'allow-popups-to-escape-sandbox', 'allow-forms']
+  if (permitirScripts) permisos.push('allow-scripts')
+
+  return (
+    <iframe
+      srcDoc={doc}
+      title="Bloque HTML"
+      sandbox={permisos.join(' ')}
+      style={{
+        width: '100%', height: '100%', border: 0, borderRadius: radio, display: 'block',
+        background: transparente ? 'transparent' : '#fff',
+        // En el lienzo no debe capturar el clic: si no, no se puede seleccionar ni mover.
+        pointerEvents: interactive ? 'auto' : 'none',
+      }}
     />
   )
 }
