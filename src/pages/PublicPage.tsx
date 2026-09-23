@@ -1,3 +1,4 @@
+import { SeccionHtml } from '../components/shared/SeccionHtml'
 import { useEffect, useState } from 'react'
 import { apiPublicLanding } from '../api/webhooks'
 import { ElementRenderer } from '../components/shared/ElementRenderer'
@@ -145,7 +146,9 @@ export function LandingView({ config, signedUrls }: { config: LandingConfig; sig
                   transform: `scale(${scale})`, transformOrigin: 'top left',
                 }}>
                   <BackgroundLayer {...fondoLayer} />
-                  {sec.elementos
+                  {/* Seccion entera en HTML: se sirve tal cual, sin dibujar sus elementos. */}
+                  {sec.modo === 'html' && <SeccionHtml seccion={sec} alto={sectionH} />}
+                  {sec.modo !== 'html' && sec.elementos
                     .slice()
                     .sort((a, b) => a.geometria.escritorio.z - b.geometria.escritorio.z)
                     .map((el) => (

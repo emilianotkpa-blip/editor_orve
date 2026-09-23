@@ -3,6 +3,7 @@ import { AnimatePresence, m } from 'motion/react'
 import Moveable, { type OnDrag, type OnDragEnd, type OnResize, type OnResizeEnd, type OnDragGroup, type OnDragGroupEnd } from 'react-moveable'
 import Selecto from 'react-selecto'
 import { useLandingStore } from '../../store/useLandingStore'
+import { SeccionHtml } from '../shared/SeccionHtml'
 import { ElementRenderer } from '../shared/ElementRenderer'
 import type { ElementoTipo } from '../../types/landing'
 import { STAGE_W, MIN_SECTION_H, MAX_SECTION_H } from '../../lib/layout'
@@ -293,7 +294,8 @@ export function Canvas() {
                   transform: `scale(${scale})`, transformOrigin: 'top left',
                 }}>
                   <BackgroundLayer {...fondoLayer} />
-                  {sec.elementos.map((el) => (
+                  {sec.modo === 'html' && <SeccionHtml seccion={sec} alto={sectionH} placeholder />}
+                  {sec.modo !== 'html' && sec.elementos.map((el) => (
                     <ElementRenderer key={el.id} element={el} viewport="escritorio" signedUrls={signedUrls} isSelected={false} />
                   ))}
                 </div>
@@ -327,6 +329,8 @@ export function Canvas() {
               }}
             >
               <BackgroundLayer {...fondoLayer} />
+              {/* Seccion entera en HTML: se sirve tal cual y sus elementos se ignoran. */}
+              {sec.modo === 'html' && <SeccionHtml seccion={sec} alto={sectionH} placeholder />}
 
               {/* dot grid */}
               <div style={{
@@ -352,7 +356,7 @@ export function Canvas() {
                 </span>
               </div>
 
-              {sec.elementos.map((el) => (
+              {sec.modo !== 'html' && sec.elementos.map((el) => (
                 <ElementRenderer
                   key={el.id}
                   element={el}

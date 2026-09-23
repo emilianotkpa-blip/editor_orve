@@ -48,6 +48,11 @@ function sanitizeConfig(raw: unknown): LandingConfig {
         nombre:  s.nombre,
         fondo:   s.fondo   ?? { tipo: 'color', valor: '#0E1411' },
         altura:  s.altura  ?? { escritorio: 580, movil: 520 },
+        // sin copiarlos aqui se perderian en silencio: esta funcion reconstruye
+        // la seccion campo por campo en cada carga.
+        modo:                s.modo ?? 'lienzo',
+        html:                s.html,
+        htmlPermitirScripts: s.htmlPermitirScripts ?? false,
         elementos: Array.isArray(s.elementos)
           ? s.elementos.map((el: Partial<LandingElemento>) => ({
               id:        el.id        ?? `el_${Math.random().toString(36).slice(2)}`,
@@ -200,6 +205,8 @@ interface LandingStore {
 
   setSectionHeight: (sectionId: string, height: number) => void
   setSectionFondo: (sectionId: string, fondo: Seccion['fondo']) => void
+  /** Convierte una seccion en HTML libre, o la devuelve al lienzo. */
+  setSectionHtml: (sectionId: string, patch: Pick<Partial<Seccion>, 'modo' | 'html' | 'htmlPermitirScripts'>) => void
 
   moveLayer: (sectionId: string, elementId: string, dir: 'front' | 'back' | 'up' | 'down') => void
   reorderLayers: (sectionId: string, orderedIdsBottomToTop: string[]) => void
@@ -823,6 +830,18 @@ export const useLandingStore = create<LandingStore>((set, get) => {
         secciones: state.config.secciones.map((s) =>
           s.id !== sectionId ? s : { ...s, fondo }
         ),
+      },
+      isDirty: true,
+      saveStatus: 'unsaved' as const,
+    }))
+  },
+
+  setSectionHtml: (sectionId, patch) => {
+    record('secHtml:' + sectionId)
+    set((state) => ({
+      config: {
+        ...state.config,
+        secciones: state.config.secciones.map((s) => (s.id !== sectionId ? s : { ...s, ...patch })),
       },
       isDirty: true,
       saveStatus: 'unsaved' as const,

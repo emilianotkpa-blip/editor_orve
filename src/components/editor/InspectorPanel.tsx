@@ -1558,10 +1558,11 @@ function PageInspector() {
 // ── section inspector (no element selected) ─────────────────────────────────
 
 function SectionInspector({ sectionId }: { sectionId: string }) {
-  const { config, signedUrls, setSectionHeight, setSectionFondo, setModoPagina } = useLandingStore()
+  const { config, signedUrls, setSectionHeight, setSectionFondo, setModoPagina, setSectionHtml } = useLandingStore()
   const sec = config.secciones.find((s) => s.id === sectionId)
   const modoHtml = config.modo === 'html'
   if (!sec) return <EmptyInspector />
+  const secHtml = sec.modo === 'html'
 
   const height  = sec.altura?.escritorio ?? 580
   const isColor = sec.fondo.tipo === 'color'
@@ -1630,6 +1631,43 @@ function SectionInspector({ sectionId }: { sectionId: string }) {
                 En este modo se publica <b>solo tu HTML</b>: el lienzo y sus secciones se
                 ignoran. Nada se borra — vuelve a “Diseñar en el lienzo” y reaparece tal
                 como estaba.
+              </p>
+            </div>
+          )}
+        </Section>
+
+        <Divider />
+
+        <Section title="Esta sección">
+          <SelectInput
+            label="Contenido"
+            value={secHtml ? 'html' : 'lienzo'}
+            options={[
+              { value: 'lienzo', label: 'Bloques del editor' },
+              { value: 'html',   label: 'Mi HTML' },
+            ]}
+            onChange={(v) => setSectionHtml(sectionId, { modo: v as 'lienzo' | 'html' })}
+          />
+          {secHtml && (
+            <div style={{ marginTop: 10 }}>
+              <Textarea
+                label="HTML de esta sección"
+                value={sec.html ?? ''}
+                onChange={(v) => setSectionHtml(sectionId, { html: v })}
+                placeholder={'<section style="padding:48px;text-align:center">  <h2>Mi sección</h2>  </section>'}
+                rows={10}
+                mono
+              />
+              <div style={{ marginTop: 8 }}>
+                <ToggleRow
+                  label="Permitir scripts"
+                  checked={sec.htmlPermitirScripts === true}
+                  onChange={(c) => setSectionHtml(sectionId, { htmlPermitirScripts: c })}
+                />
+              </div>
+              <p style={{ fontSize: 11, color: 'var(--ed-text-3)', marginTop: 8, lineHeight: 1.45 }}>
+                Esta franja se sirve como tu HTML y sus bloques no se dibujan. No se borran:
+                vuelve a «Bloques del editor» y reaparecen. El alto lo sigues marcando abajo.
               </p>
             </div>
           )}

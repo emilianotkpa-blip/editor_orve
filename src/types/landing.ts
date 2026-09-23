@@ -94,6 +94,14 @@ export interface Seccion {
   fondo: SeccionFondo
   altura: { escritorio: number; movil: number }
   elementos: LandingElemento[]
+  /**
+   * 'lienzo' (por defecto) dibuja los elementos de siempre.
+   * 'html' convierte la franja entera en tu HTML, conviviendo con el resto de
+   * secciones. Ausente = 'lienzo': las secciones que ya existen no cambian.
+   */
+  modo?: 'lienzo' | 'html'
+  html?: string
+  htmlPermitirScripts?: boolean
 }
 
 export interface EstiloPagina {
