@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useState, type FormEvent } from 'react'
+import { forwardRef, useEffect, useState, type FormEvent, useRef } from 'react'
 import type { CSSProperties } from 'react'
 import type { LandingElemento, Viewport, ProyectoCard } from '../../types/landing'
 import { resolveSrc, isDisplayableUrl } from '../../lib/images'
@@ -8,6 +8,7 @@ import { resolveButtonAction } from '../../lib/acciones'
 import { getCampos } from '../../lib/forms'
 import { usePublicSlug } from '../../lib/public-ctx'
 import { apiSubmitLead } from '../../api/webhooks'
+import { registrar, registrarUnaVez } from '../../lib/metricas'
 import { OrveLogo, type LogoVariante, type LogoTinta } from './Brand'
 import { margenSeguro } from '../../lib/marca'
 
@@ -197,6 +198,18 @@ export function videoInfo(raw: string): { kind: 'iframe' | 'video'; src: string 
 
 function VideoEl({ element, interactive }: { element: LandingElemento; interactive: boolean }) {
   const info = videoInfo((element.contenido.url as string) || '')
+  const slug = usePublicSlug()
+  const refIframe = useRef<HTMLIFrameElement>(null)
+  // El listener vive mientras vive el bloque: si se engancha al pasar el raton se
+  // pierde a quien va directo al play.
+  useEffect(() => {
+    if (!interactive) return
+    const alSalirElFoco = () => {
+      if (document.activeElement === refIframe.current) registrarUnaVez(slug, 'video', 'interaccion')
+    }
+    window.addEventListener('blur', alSalirElFoco)
+    return () => window.removeEventListener('blur', alSalirElFoco)
+  }, [interactive, slug])
   const radio = element.estilo.radio ?? 12
   if (!info) {
     return (
@@ -216,9 +229,25 @@ function VideoEl({ element, interactive }: { element: LandingElemento; interacti
     width: '100%', height: '100%', border: 0, borderRadius: radio, display: 'block',
     background: '#000', pointerEvents: interactive ? 'auto' : 'none',
   }
-  if (info.kind === 'video') return <video src={info.src} controls playsInline style={common} />
+  // Un video subido lo controlamos nosotros: 'play' es un play de verdad.
+  if (info.kind === 'video') {
+    return (
+      <video
+        src={info.src}
+        controls
+        playsInline
+        style={common}
+        onPlay={() => registrarUnaVez(slug, 'video', 'reproduccion')}
+      />
+    )
+  }
+  // YouTube, Drive o Vimeo corren en su propio dominio: no podemos saber si le dieron
+  // al play. Lo que si se nota es cuando el foco se va DENTRO del reproductor, que es
+  // el clic del visitante. Se cuenta como interaccion, no como reproduccion — y asi
+  // aparece etiquetado en el panel.
   return (
     <iframe
+      ref={refIframe}
       src={info.src}
       title="Video"
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
@@ -309,6 +338,7 @@ function TextoEl({ element }: { element: LandingElemento }) {
 
 function BotonEl({ element, interactive }: { element: LandingElemento; interactive: boolean }) {
   const { contenido, estilo } = element
+  const slug = usePublicSlug()
   const label = (contenido.texto as string) || 'Botón'
   const btnStyle: CSSProperties = {
     width: '100%', height: '100%',
@@ -329,15 +359,27 @@ function BotonEl({ element, interactive }: { element: LandingElemento; interacti
   }
 
   const action = resolveButtonAction(contenido)
+  // Que se toco: 'whatsapp · Escríbeme'. Con esto el panel puede decir por donde
+  // contactan de verdad, no solo cuanta gente entro.
+  const queEs = `${(contenido.accion as string) || 'url'} · ${label}`.slice(0, 120)
+  const esContacto = ['whatsapp', 'email'].indexOf((contenido.accion as string) || '') >= 0
+  const anotar = () => registrar(slug, esContacto ? 'contacto' : 'clic', queEs)
+
   if (action.href) {
     return (
-      <a href={action.href} target={action.target} rel={action.target === '_blank' ? 'noreferrer' : undefined} style={btnStyle}>
+      <a
+        href={action.href}
+        target={action.target}
+        rel={action.target === '_blank' ? 'noreferrer' : undefined}
+        style={btnStyle}
+        onClick={anotar}
+      >
         {label}
       </a>
     )
   }
   return (
-    <button style={btnStyle} onClick={action.onClick}>{label}</button>
+    <button style={btnStyle} onClick={() => { anotar(); action.onClick?.() }}>{label}</button>
   )
 }
 
@@ -489,6 +531,7 @@ function FormularioEl({ element, interactive }: { element: LandingElemento; inte
     const data: Record<string, string> = {}
     campos.forEach((c) => { data[c.id] = String(fd.get(c.id) ?? '') })
     if (slug) apiSubmitLead(slug, data, materialUrl).catch(() => {})
+    registrar(slug, 'lead', titulo)
     setSent(true)
   }
 
@@ -542,6 +585,7 @@ function FormularioEl({ element, interactive }: { element: LandingElemento; inte
               href={materialUrl}
               target="_blank"
               rel="noreferrer"
+              onClick={() => registrar(slug, 'material', materialTexto)}
               style={{ background: '#38D030', color: '#063800', borderRadius: 7, padding: '10px 18px', fontWeight: 800, fontSize: 13, textDecoration: 'none', fontFamily: 'Mulish,sans-serif' }}
             >
               {materialTexto}

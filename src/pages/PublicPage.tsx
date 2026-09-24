@@ -1,6 +1,7 @@
 import { SeccionHtml } from '../components/shared/SeccionHtml'
 import { useEffect, useState } from 'react'
 import { apiPublicLanding } from '../api/webhooks'
+import { registrarVisita } from '../lib/metricas'
 import { ElementRenderer } from '../components/shared/ElementRenderer'
 import { PublicSlugCtx } from '../lib/public-ctx'
 import type { LandingConfig } from '../types/landing'
@@ -24,10 +25,17 @@ export function PublicPage({ slug }: { slug: string }) {
     return () => { document.body.style.overflow = '' }
   }, [slug])
 
+  // Una visita por pestaña, ya que la landing existe (las que no existen no cuentan).
+  useEffect(() => {
+    if (status === 'ready') registrarVisita(slug)
+  }, [status, slug])
+
   useEffect(() => {
     apiPublicLanding(slug)
       .then((res) => {
-        if (res.disponible && res.config) {
+        // Las landings del formato viejo no traen `secciones`: no se pueden pintar y
+        // antes reventaban en la cara del visitante. Se tratan como no disponibles.
+        if (res.disponible && res.config && Array.isArray(res.config.secciones)) {
           setConfig(res.config)
           setSigned(res.signedUrls ?? {})
           setStatus('ready')
