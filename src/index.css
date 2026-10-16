@@ -81,3 +81,10 @@ button:active { transform: scale(.98); }
   background: #fff !important;
   border-color: #38D030 !important;
 }
+
+/* Barra de arriba: en pantallas angostas el boton de Tutorial queda solo con el icono (el texto
+   sigue en el title) para que la derecha no empuje al selector Escritorio/Movil. */
+@media (max-width: 1380px) {
+  .ed-boton-tutorial { padding: 7px 9px !important; }
+  .ed-boton-tutorial-txt { display: none; }
+}

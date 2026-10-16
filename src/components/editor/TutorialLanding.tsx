@@ -69,6 +69,7 @@ function base() {
 }
 /** La landing + una seccion de ejemplo al final, con los bloques indicados (x, y = centro). */
 function conEjemplo(bloques: [string, number, number][] = [], alto = 560) {
+  if (!foto) return   // el tutorial ya termino: nunca tocar la landing de verdad
   base()
   st().addSection()
   const nueva = st().config.secciones[st().config.secciones.length - 1]
@@ -193,7 +194,7 @@ async function moverPieza(u: Util, fn: () => LandingElemento | undefined, dx: nu
   // Moveable se dibuja oculto la primera vez y se muestra en el siguiente render (normalmente lo
   // provoca el propio mouse). Aqui nadie mueve el mouse: se provoca ese render.
   await u.esperar(120)
-  st().setLiveGeo(null)
+  if (u.vigente()) st().setLiveGeo(null)
 }
 
 const CONOCE = 'Conoce el editor'
@@ -551,6 +552,8 @@ export function TutorialLanding() {
         // Los arrastres hacen su propio clic (al tomar y al soltar).
         if (!paso.arrastre) util.clic()
         await esperarMs(160)
+        // Si en esos 160 ms se salio del tutorial, la landing ya se restauro: la accion no corre.
+        if (!vigente() || !foto) return
         await paso.accion(util)
         await esperarMs(250)
         if (!vigente()) return
@@ -618,6 +621,7 @@ export function TutorialLanding() {
         type="button"
         onClick={abrirMenu}
         title="Tutorial: aprende a usar el editor"
+        className="ed-boton-tutorial"
         style={{
           position: 'relative', display: 'flex', alignItems: 'center', gap: 7,
           background: 'transparent', border: '1px solid var(--ed-border-2)',
@@ -628,7 +632,7 @@ export function TutorialLanding() {
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="10" /><path d="M10 8l6 4-6 4z" fill="currentColor" />
         </svg>
-        Tutorial
+        <span className="ed-boton-tutorial-txt">Tutorial</span>
         {/* La primera vez, un punto verde invita a abrirlo. */}
         {!visto && (
           <m.span

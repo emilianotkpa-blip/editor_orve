@@ -41,14 +41,17 @@ export function TopBar() {
   }
 
   return (
+    // Tres columnas (izquierda | selector | derecha): el selector queda al centro mientras cabe y,
+    // si la derecha crece, se recorre en vez de encimarse. Antes iba en position:absolute al centro
+    // y al sumar el boton de Tutorial tapo Deshacer/Rehacer.
     <div style={{
       position: 'relative', height: 64, flexShrink: 0,
       background: 'var(--ed-bar)', borderBottom: '1px solid var(--ed-border-2)',
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', columnGap: 16,
       padding: '0 14px', zIndex: 30,
     }}>
       {/* left: logo + breadcrumb + status */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifySelf: 'start', whiteSpace: 'nowrap' }}>
         {/* Logotipo oficial (ya trae el «ORVE») + marca del producto DVD.
             El lockup se pinta lo mas grande que permite la barra: a 26 px de
             alto medía ~65 px de ancho y quedaba ilegible, muy por debajo de lo
@@ -69,8 +72,6 @@ export function TopBar() {
 
       {/* center: device switch */}
       <div data-tutorial="vistas" style={{
-        position: 'absolute', left: '50%', top: '50%',
-        transform: 'translate(-50%,-50%)',
         display: 'flex',
         background: '#262626', border: '1px solid #343434',
         borderRadius: 9, padding: 3, gap: 3,
@@ -80,7 +81,7 @@ export function TopBar() {
       </div>
 
       {/* right: undo/redo + theme + preview + save status + save + publish + avatar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 11, justifySelf: 'end', whiteSpace: 'nowrap' }}>
         <div data-tutorial="historial" style={{ display: 'flex', gap: 2 }}>
           <HistoryBtn title="Deshacer (Ctrl+Z)" disabled={!canUndo} onClick={undo}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
