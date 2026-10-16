@@ -3,6 +3,7 @@ import { AnimatePresence, m } from 'motion/react'
 import { useLandingStore } from '../../store/useLandingStore'
 import { OrveLogo, DiamondMark } from '../shared/Brand'
 import { POP, PULSE, LAYOUT, popover, panelSwap } from '../../lib/motion'
+import { TutorialLanding } from './TutorialLanding'
 
 export function TopBar() {
   const {
@@ -67,7 +68,7 @@ export function TopBar() {
       </div>
 
       {/* center: device switch */}
-      <div style={{
+      <div data-tutorial="vistas" style={{
         position: 'absolute', left: '50%', top: '50%',
         transform: 'translate(-50%,-50%)',
         display: 'flex',
@@ -80,7 +81,7 @@ export function TopBar() {
 
       {/* right: undo/redo + theme + preview + save status + save + publish + avatar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
-        <div style={{ display: 'flex', gap: 2 }}>
+        <div data-tutorial="historial" style={{ display: 'flex', gap: 2 }}>
           <HistoryBtn title="Deshacer (Ctrl+Z)" disabled={!canUndo} onClick={undo}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-1"/>
@@ -96,7 +97,10 @@ export function TopBar() {
 
         <ThemeToggle theme={theme} onClick={toggleTheme} />
 
+        <TutorialLanding />
+
         <button
+          data-tutorial="vista-previa"
           onClick={() => setPreviewing(true)}
           title="Ver cómo se publicará"
           style={{
@@ -126,6 +130,7 @@ export function TopBar() {
           {saveLabel}
         </div>
         <m.button
+          data-tutorial="guardar"
           onClick={() => saveLanding()}
           disabled={isSaving}
           whileTap={{ scale: 0.96 }}
@@ -143,6 +148,7 @@ export function TopBar() {
         {/* publish + link popover */}
         <div style={{ position: 'relative' }}>
           <m.button
+            data-tutorial="publicar"
             onClick={handlePublish}
             disabled={isPublishing}
             whileHover={isPublishing ? undefined : { scale: 1.03 }}

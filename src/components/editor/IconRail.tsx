@@ -42,7 +42,7 @@ export function IconRail() {
   }
 
   return (
-    <div style={{
+    <div data-tutorial="herramientas" style={{
       width: 58, flexShrink: 0,
       background: 'var(--ed-panel)', borderRight: '1px solid var(--ed-border)',
       display: 'flex', flexDirection: 'column', alignItems: 'center',

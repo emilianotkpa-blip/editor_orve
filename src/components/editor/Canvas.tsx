@@ -262,7 +262,7 @@ export function Canvas() {
   const pageBgUrl     = resolveSrc(pagina.fondoImagen, signedUrls)
 
   return (
-    <div ref={raizRef} style={{ flex: 1, position: 'relative', overflow: 'hidden', background: 'var(--ed-canvas)' }}>
+    <div ref={raizRef} data-tutorial="lienzo" style={{ flex: 1, position: 'relative', overflow: 'hidden', background: 'var(--ed-canvas)' }}>
       {!isMobile && acotada && config.modo !== 'html' && (
         <BackgroundLayer
           tipo={pageFondoTipo}

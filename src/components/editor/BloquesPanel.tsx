@@ -177,6 +177,7 @@ function TarjetaBloque({
 
   return (
     <m.div
+      data-tutorial-bloque={bloque.id}
       onPointerDown={(e) => {
         if (bloqueado || e.button !== 0) return
         e.preventDefault()
@@ -260,6 +261,7 @@ export function TabsPanel({ tab, onTab }: { tab: 'capas' | 'bloques'; onTab: (t:
       {(['bloques', 'capas'] as const).map((t) => (
         <m.button
           key={t}
+          data-tutorial={'tab-' + t}
           onClick={() => onTab(t)}
           whileTap={{ scale: 0.96 }}
           transition={POP}

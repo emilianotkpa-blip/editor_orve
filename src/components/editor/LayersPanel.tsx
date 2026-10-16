@@ -50,7 +50,7 @@ export function LayersPanel({ onColapsar }: { onColapsar?: () => void }) {
   }
 
   return (
-    <div style={{
+    <div data-tutorial="panel-izq" style={{
       width: 220, flexShrink: 0,
       background: 'var(--ed-panel)', borderRight: '1px solid var(--ed-border)',
       display: 'flex', flexDirection: 'column',
@@ -147,9 +147,10 @@ export function LayersPanel({ onColapsar }: { onColapsar?: () => void }) {
       {/* layers list
           layoutScroll: la lista scrollea, y sin esto Motion mide las filas
           contra el viewport y el reacomodo sale desplazado. */}
-      <m.div layoutScroll style={{ flex: 1, overflowY: 'auto', padding: '8px 0', display: tab === 'capas' ? 'block' : 'none' }}>
+      <m.div layoutScroll data-tutorial="lista-capas" style={{ flex: 1, overflowY: 'auto', padding: '8px 0', display: tab === 'capas' ? 'block' : 'none' }}>
         {/* page properties entry */}
         <div
+          data-tutorial="fila-pagina"
           onClick={() => setEditingPage(true)}
           title="Propiedades de la página (ancho, fondo)"
           style={{
@@ -171,7 +172,7 @@ export function LayersPanel({ onColapsar }: { onColapsar?: () => void }) {
           const isActiveSection = seccion.id === activeSectionId
           const onlyOne = config.secciones.length <= 1
           return (
-          <div key={seccion.id} className="ed-section-row">
+          <div key={seccion.id} className="ed-section-row" data-tutorial-seccion={seccion.id}>
             <div
               onClick={() => { setActiveSection(seccion.id); selectElement(null) }}
               title="Activar sección (los nuevos elementos van aquí)"
@@ -303,6 +304,7 @@ export function LayersPanel({ onColapsar }: { onColapsar?: () => void }) {
         {/* add section */}
         <m.div layout style={{ padding: '10px 12px 4px' }}>
           <m.button
+            data-tutorial="agregar-seccion"
             onClick={() => addSection()}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}

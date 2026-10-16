@@ -125,7 +125,7 @@ export function InspectorPanel() {
   }
 
   return (
-    <div style={{
+    <div data-tutorial="inspector" style={{
       width: 252, flexShrink: 0,
       background: 'var(--ed-panel)', borderLeft: '1px solid var(--ed-border)',
       display: 'flex', flexDirection: 'column',
@@ -719,7 +719,7 @@ function SingleImageField({
   }
 
   return (
-    <div>
+    <div data-tutorial="subir-imagen">
       <input
         ref={inputRef}
         type="file"
@@ -1197,7 +1197,7 @@ function FormularioInspector({ el, patchStyle, patchContent }: SubProps) {
             onChange={(v) => patchContent({ boton: v })}
           />
         </div>
-        <div style={{ marginTop: 8 }}>
+        <div data-tutorial="material" style={{ marginTop: 8 }}>
           <TextInput
             label="Material a desbloquear (URL, opcional 🔒)"
             placeholder="https://… (PDF, guía, video)"
@@ -1446,7 +1446,7 @@ function PageInspector() {
   const modoHtml = config.modo === 'html'
 
   return (
-    <div style={{
+    <div data-tutorial="inspector" style={{
       width: 252, flexShrink: 0,
       background: 'var(--ed-panel)', borderLeft: '1px solid var(--ed-border)',
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
@@ -1618,7 +1618,7 @@ function SectionInspector({ sectionId }: { sectionId: string }) {
   const isColor = sec.fondo.tipo === 'color'
 
   return (
-    <div style={{
+    <div data-tutorial="inspector" style={{
       width: 252, flexShrink: 0,
       background: 'var(--ed-panel)', borderLeft: '1px solid var(--ed-border)',
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
@@ -1802,7 +1802,7 @@ function CampoHtml({
   }
 
   return (
-    <div>
+    <div data-tutorial="campo-html">
       <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
         <button type="button" onClick={() => archivo.current?.click()} style={botonSecundario}>
           Cargar archivo .html
@@ -1878,7 +1878,7 @@ function MultiSelectInspector({ count }: { count: number }) {
     { mode: 'bottom',  label: 'Abajo',           icon: <AlignIcon d="hB" /> },
   ]
   return (
-    <div style={{
+    <div data-tutorial="inspector" style={{
       width: 252, flexShrink: 0,
       background: 'var(--ed-panel)', borderLeft: '1px solid var(--ed-border)',
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
@@ -1962,7 +1962,7 @@ function AlignIcon({ d }: { d: string }) {
 
 function EmptyInspector() {
   return (
-    <div style={{
+    <div data-tutorial="inspector" style={{
       width: 252, flexShrink: 0,
       background: 'var(--ed-panel)', borderLeft: '1px solid var(--ed-border)',
       display: 'flex', flexDirection: 'column',
@@ -1983,9 +1983,14 @@ function EmptyInspector() {
 
 // ── shared UI primitives ───────────────────────────────────────────────────
 
+// data-tutorial="sec-…" sale del titulo (sin acentos ni lo que va entre parentesis):
+// "Tu enlace (URL)" -> sec-tu-enlace. Lo usa el tutorial para iluminar cada bloque.
+const claveTutorial = (t: string) => 'sec-' + t.replace(/\(.*?\)/g, '').normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div style={{ padding: '10px 0' }}>
+    <div data-tutorial={claveTutorial(title)} style={{ padding: '10px 0' }}>
       <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '.8px', color: '#4F5458', textTransform: 'uppercase', marginBottom: 10 }}>
         {title}
       </div>
