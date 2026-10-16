@@ -4,8 +4,9 @@ import Moveable, { type OnDrag, type OnDragEnd, type OnResize, type OnResizeEnd,
 import Selecto from 'react-selecto'
 import { useLandingStore } from '../../store/useLandingStore'
 import { SeccionHtml } from '../shared/SeccionHtml'
+import { PaginaHtml } from '../shared/PaginaHtml'
 import { ElementRenderer } from '../shared/ElementRenderer'
-import type { ElementoTipo } from '../../types/landing'
+import type { ElementoTipo, EstiloPagina } from '../../types/landing'
 import { STAGE_W, MIN_SECTION_H, MAX_SECTION_H } from '../../lib/layout'
 import { sectionFondoLayer } from '../../lib/sections'
 import { BackgroundLayer } from '../shared/BackgroundLayer'
@@ -32,6 +33,18 @@ export function Canvas() {
   } = useLandingStore()
 
   const frameRef   = useRef<HTMLDivElement>(null)
+  // Espacio libre del lienzo (sin el relleno): lo usa la vista de pagina en HTML.
+  const raizRef    = useRef<HTMLDivElement>(null)
+  const [disponible, setDisponible] = useState({ w: 860, h: 700 })
+  useEffect(() => {
+    const el = raizRef.current
+    if (!el) return
+    const medir = () => setDisponible({ w: el.clientWidth - 40, h: el.clientHeight - 28 - 48 })
+    medir()
+    const ro = new ResizeObserver(medir)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   const sectionEls = useRef<Map<string, HTMLDivElement>>(new Map())
   const elemRefs   = useRef<Map<string, HTMLDivElement>>(new Map())
 
@@ -249,8 +262,8 @@ export function Canvas() {
   const pageBgUrl     = resolveSrc(pagina.fondoImagen, signedUrls)
 
   return (
-    <div style={{ flex: 1, position: 'relative', overflow: 'hidden', background: 'var(--ed-canvas)' }}>
-      {!isMobile && acotada && (
+    <div ref={raizRef} style={{ flex: 1, position: 'relative', overflow: 'hidden', background: 'var(--ed-canvas)' }}>
+      {!isMobile && acotada && config.modo !== 'html' && (
         <BackgroundLayer
           tipo={pageFondoTipo}
           color={pagina.fondo || '#0A0A0A'}
@@ -269,17 +282,37 @@ export function Canvas() {
         }}
       >
       <div ref={frameRef} className="orve-frame" style={{
-        position: 'relative', width: frameW, flexShrink: 0,
+        position: 'relative', flexShrink: 0,
+        // Pagina en HTML: el marco toma el ancho de la pantalla simulada (VistaHtmlPagina).
+        width: config.modo === 'html' ? 'auto' : frameW,
         boxShadow: '0 8px 48px rgba(0,0,0,.7)',
         borderRadius: 10, overflow: 'hidden',
       }}>
         {/* Modo "Traer mi HTML": el lienzo muestra TU pagina, no el diseno de bloques.
             Antes seguia pintando el lienzo y por eso parecia que el modo no hacia nada. */}
         {config.modo === 'html' ? (
-          <VistaHtmlPagina html={config.html ?? ''} scripts={config.htmlPermitirScripts === true} alto={620} />
+          <VistaHtmlPagina
+            html={config.html ?? ''}
+            scripts={config.htmlPermitirScripts === true}
+            pagina={pagina}
+            fondoUrl={pageBgUrl}
+            movil={isMobile}
+            disponible={disponible}
+          />
         ) : config.secciones.map((sec, idx) => {
           const sectionH = sec.altura?.escritorio ?? 580
           const fondoLayer = sectionFondoLayer(sec.fondo, signedUrls)
+          const secHtml = sec.modo === 'html'
+
+          // ── mobile, seccion en HTML: al ancho real del celular, no escalada ──
+          if (isMobile && secHtml) {
+            return (
+              <div key={sec.id} style={{ position: 'relative', width: MOBILE_W, overflow: 'hidden', background: '#0E1411' }}>
+                <BackgroundLayer {...fondoLayer} />
+                <SeccionHtml seccion={sec} placeholder />
+              </div>
+            )
+          }
 
           // ── mobile: faithful scaled preview ──
           if (isMobile) {
@@ -294,8 +327,7 @@ export function Canvas() {
                   transform: `scale(${scale})`, transformOrigin: 'top left',
                 }}>
                   <BackgroundLayer {...fondoLayer} />
-                  {sec.modo === 'html' && <SeccionHtml seccion={sec} alto={sectionH} placeholder />}
-                  {sec.modo !== 'html' && sec.elementos.map((el) => (
+                  {sec.elementos.map((el) => (
                     <ElementRenderer key={el.id} element={el} viewport="escritorio" signedUrls={signedUrls} isSelected={false} />
                   ))}
                 </div>
@@ -321,7 +353,9 @@ export function Canvas() {
               style={{
                 position: 'relative',
                 width: STAGE_W,
-                height: sectionH,
+                // En HTML el alto lo pone el propio HTML (automatico o fijo, ver SeccionHtml).
+                height: secHtml ? undefined : sectionH,
+                minHeight: secHtml ? 40 : undefined,
                 overflow: dragLift ? 'visible' : 'hidden',
                 zIndex: dragLift ? 50 : 'auto',
                 outline: isHover ? '3px solid #38D030' : isActive ? '2px solid rgba(56,208,48,.45)' : 'none',
@@ -330,7 +364,12 @@ export function Canvas() {
             >
               <BackgroundLayer {...fondoLayer} />
               {/* Seccion entera en HTML: se sirve tal cual y sus elementos se ignoran. */}
-              {sec.modo === 'html' && <SeccionHtml seccion={sec} alto={sectionH} placeholder />}
+              {secHtml && <SeccionHtml seccion={sec} placeholder />}
+              {/* El iframe se traga los clics: mientras la seccion no esta activa, una capa
+                  transparente deja seleccionarla. Ya activa se quita y se puede usar el HTML. */}
+              {secHtml && !isActive && !isPlacing && (
+                <div title="Clic para editar esta sección" style={{ position: 'absolute', inset: 0, zIndex: 10, cursor: 'pointer' }} />
+              )}
 
               {/* dot grid */}
               <div style={{
@@ -443,8 +482,8 @@ export function Canvas() {
                 )}
               </AnimatePresence>
 
-              {/* section height handle */}
-              {!isPlacing && (
+              {/* section height handle (en HTML automatico el alto no se arrastra) */}
+              {!isPlacing && !(secHtml && (sec.htmlAlto ?? 'auto') === 'auto') && (
                 <div
                   className="ed-no-rubber"
                   title="Arrastra para ajustar la altura de la sección"
@@ -496,34 +535,46 @@ export function Canvas() {
 }
 
 
-// Vista del modo "Traer mi HTML" dentro del lienzo. Va en iframe aislado, igual que en
-// la pagina publica, para que lo que ves aqui sea exactamente lo que se publica.
-function VistaHtmlPagina({ html, scripts, alto }: { html: string; scripts: boolean; alto: number }) {
+// Vista del modo "Traer mi HTML" dentro del lienzo: una pantalla simulada (1366px en
+// computadora, 390 en celular) encogida al espacio del lienzo, con la misma PaginaHtml
+// que la pagina publica. Asi se nota de verdad si va completa o acotada: en un lienzo
+// de ~850px una tarjeta de 1000px no se distinguiria de la pagina completa.
+const NAVEGADOR_W = 1366
+
+function VistaHtmlPagina({ html, scripts, pagina, fondoUrl, movil, disponible }: {
+  html: string; scripts: boolean; pagina: EstiloPagina; fondoUrl?: string
+  movil: boolean; disponible: { w: number; h: number }
+}) {
+  const anchoVirtual = movil ? MOBILE_W : NAVEGADOR_W
+  const escala = movil ? 1 : Math.max(0.3, Math.min(1, disponible.w / anchoVirtual))
+  const altoVisible = Math.max(420, disponible.h)
   if (!html.trim()) {
     return (
       <div style={{
-        height: alto, display: 'flex', flexDirection: 'column', gap: 8,
+        width: movil ? MOBILE_W : Math.min(900, disponible.w), height: altoVisible,
+        display: 'flex', flexDirection: 'column', gap: 8,
         alignItems: 'center', justifyContent: 'center', textAlign: 'center',
-        background: '#0E1411', color: 'rgba(255,255,255,.62)', padding: 32,
+        background: '#0E1411', color: 'rgba(255,255,255,.62)', padding: 32, boxSizing: 'border-box',
       }}>
         <div style={{ fontSize: 15, fontWeight: 700, color: 'rgba(255,255,255,.85)' }}>
-          Estás en modo «Traer mi HTML»
+          Tu página es tu HTML
         </div>
         <div style={{ fontSize: 13, maxWidth: 440, lineHeight: 1.5 }}>
-          Pega tu documento en el panel de la derecha y aparecerá aquí mismo. O usa
-          «Partir de mi diseño actual» para empezar con lo que ya tenías.
+          Pega tu documento o carga tu archivo .html en el panel «Página» y aparecerá aquí
+          mismo. O usa «Partir de mi diseño» para empezar con lo que ya tenías.
         </div>
       </div>
     )
   }
-  const permisos = ['allow-popups', 'allow-popups-to-escape-sandbox', 'allow-forms']
-  if (scripts) permisos.push('allow-scripts')
   return (
-    <iframe
-      srcDoc={html}
-      title="Tu HTML"
-      sandbox={permisos.join(' ')}
-      style={{ display: 'block', width: '100%', height: alto, border: 0, background: '#fff' }}
-    />
+    <div style={{ width: Math.round(anchoVirtual * escala), height: altoVisible, position: 'relative', overflow: 'hidden' }}>
+      <div style={{
+        position: 'absolute', top: 0, left: 0,
+        width: anchoVirtual, height: altoVisible / escala,
+        transform: `scale(${escala})`, transformOrigin: 'top left',
+      }}>
+        <PaginaHtml html={html} scripts={scripts} pagina={pagina} fondoUrl={fondoUrl} ancho={anchoVirtual} title="Tu HTML" />
+      </div>
+    </div>
   )
 }

@@ -13,6 +13,7 @@ import { OrveLogo, MARCA, type LogoVariante, type LogoTinta } from '../shared/Br
 import { logoGeo, logoLimites, margenSeguro } from '../../lib/marca'
 import { PANEL, POP } from '../../lib/motion'
 import { lienzoAHtml } from '../../lib/exportar-html'
+import { traeScripts, tamanoHtml } from '../../lib/html-libre'
 
 function newProyectoCard(): ProyectoCard {
   return {
@@ -1439,9 +1440,10 @@ function SlugField() {
 // ── page inspector (global page properties) ─────────────────────────────────
 
 function PageInspector() {
-  const { config, setPagina } = useLandingStore()
+  const { config, signedUrls, setPagina, setModoPagina } = useLandingStore()
   const pagina = config.pagina ?? { ancho: 'completa' as const }
   const acotada = pagina.ancho === 'acotada'
+  const modoHtml = config.modo === 'html'
 
   return (
     <div style={{
@@ -1457,6 +1459,51 @@ function PageInspector() {
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px' }}>
+        <Section title="Cómo se arma">
+          <SelectInput
+            label="Contenido de la página"
+            value={modoHtml ? 'html' : 'lienzo'}
+            options={[
+              { value: 'lienzo', label: 'Diseñar en el lienzo' },
+              { value: 'html',   label: 'Pegar mi HTML (página completa)' },
+            ]}
+            onChange={(v) => setModoPagina({ modo: v as 'lienzo' | 'html' })}
+          />
+          {modoHtml && (
+            <div style={{ marginTop: 10 }}>
+              <CampoHtml
+                label="Documento HTML completo"
+                value={config.html ?? ''}
+                onChange={(v) => setModoPagina({ html: v })}
+                scripts={config.htmlPermitirScripts === true}
+                onScripts={(c) => setModoPagina({ htmlPermitirScripts: c })}
+                placeholder={'<!doctype html>' + NL + '<html>' + NL + '  <body>…</body>' + NL + '</html>'}
+                rows={12}
+                extra={(
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const ya = (config.html ?? '').trim()
+                      if (ya && !confirm('Vas a reemplazar el HTML que ya tienes escrito. ¿Seguimos?')) return
+                      setModoPagina({ html: lienzoAHtml(config, signedUrls) })
+                    }}
+                    style={botonSecundario}
+                  >
+                    Partir de mi diseño
+                  </button>
+                )}
+              />
+              <p style={{ fontSize: 11, color: '#C99A3A', marginTop: 8, lineHeight: 1.45 }}>
+                Se publica <b>solo tu HTML</b> y el lienzo se ignora. Nada se borra: vuelve a
+                «Diseñar en el lienzo» y reaparece tal como estaba. El ancho de abajo
+                (completa o acotada) también aplica a tu HTML.
+              </p>
+            </div>
+          )}
+        </Section>
+
+        <Divider />
+
         <Section title="Tu enlace (URL)">
           <SlugField />
         </Section>
@@ -1484,7 +1531,9 @@ function PageInspector() {
           )}
           <div style={{ fontSize: 10, color: '#4F5458', marginTop: 6, lineHeight: 1.4 }}>
             {acotada
-              ? 'La landing se centra con un ancho máximo. El editor siempre muestra el diseño a 900px.'
+              ? (modoHtml
+                ? 'Tu HTML se muestra como tarjeta centrada, con el fondo de abajo alrededor.'
+                : 'La landing se centra con un ancho máximo. El editor siempre muestra el diseño a 900px.')
               : 'La landing ocupa todo el ancho del navegador.'}
           </div>
         </Section>
@@ -1558,11 +1607,12 @@ function PageInspector() {
 // ── section inspector (no element selected) ─────────────────────────────────
 
 function SectionInspector({ sectionId }: { sectionId: string }) {
-  const { config, signedUrls, setSectionHeight, setSectionFondo, setModoPagina, setSectionHtml } = useLandingStore()
+  const { config, setSectionHeight, setSectionFondo, setSectionHtml, setEditingPage } = useLandingStore()
   const sec = config.secciones.find((s) => s.id === sectionId)
   const modoHtml = config.modo === 'html'
   if (!sec) return <EmptyInspector />
   const secHtml = sec.modo === 'html'
+  const altoAuto = (sec.htmlAlto ?? 'auto') === 'auto'
 
   const height  = sec.altura?.escritorio ?? 580
   const isColor = sec.fondo.tipo === 'color'
@@ -1584,59 +1634,29 @@ function SectionInspector({ sectionId }: { sectionId: string }) {
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px' }}>
-        <Section title="Página">
-          <SelectInput
-            label="Cómo se arma"
-            value={modoHtml ? 'html' : 'lienzo'}
-            options={[
-              { value: 'lienzo', label: 'Diseñar en el lienzo' },
-              { value: 'html',   label: 'Traer mi HTML' },
-            ]}
-            onChange={(v) => setModoPagina({ modo: v as 'lienzo' | 'html' })}
-          />
-          {modoHtml && (
-            <div style={{ marginTop: 10 }}>
-              {/* Dos caminos: partir de lo que ya hiciste, o pegar el tuyo. */}
+        {modoHtml && (
+          <>
+            <div style={{
+              fontSize: 11, lineHeight: 1.45, color: '#C99A3A', padding: '8px 10px', borderRadius: 7,
+              background: 'rgba(201,154,58,.08)', border: '1px solid rgba(201,154,58,.3)',
+            }}>
+              La página está en <b>HTML completo</b>: se publica solo tu documento y las
+              secciones del lienzo no se ven.
               <button
                 type="button"
-                onClick={() => {
-                  const ya = (config.html ?? '').trim()
-                  if (ya && !confirm('Vas a reemplazar el HTML que ya tienes escrito. ¿Seguimos?')) return
-                  setModoPagina({ html: lienzoAHtml(config, signedUrls) })
-                }}
+                onClick={() => setEditingPage(true)}
                 style={{
-                  width: '100%', marginBottom: 8, padding: '8px 10px', borderRadius: 7,
-                  background: 'rgba(56,208,48,.12)', border: '1px solid rgba(56,208,48,.45)',
-                  color: '#38D030', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  display: 'block', marginTop: 8, padding: '6px 10px', borderRadius: 6, cursor: 'pointer',
+                  background: 'transparent', border: '1px solid rgba(201,154,58,.55)', color: '#C99A3A',
+                  fontSize: 11, fontWeight: 700, fontFamily: 'inherit',
                 }}
               >
-                Partir de mi diseño actual
+                Abrir «Página»
               </button>
-              <Textarea
-                label="Documento HTML completo"
-                value={config.html ?? ''}
-                onChange={(v) => setModoPagina({ html: v })}
-                placeholder={'<!doctype html>\n<html>\n  <body>…</body>\n</html>'}
-                rows={12}
-                mono
-              />
-              <div style={{ marginTop: 8 }}>
-                <ToggleRow
-                  label="Permitir scripts"
-                  checked={config.htmlPermitirScripts === true}
-                  onChange={(c) => setModoPagina({ htmlPermitirScripts: c })}
-                />
-              </div>
-              <p style={{ fontSize: 11, color: '#C99A3A', marginTop: 8, lineHeight: 1.45 }}>
-                En este modo se publica <b>solo tu HTML</b>: el lienzo y sus secciones se
-                ignoran. Nada se borra — vuelve a “Diseñar en el lienzo” y reaparece tal
-                como estaba.
-              </p>
             </div>
-          )}
-        </Section>
-
-        <Divider />
+            <Divider />
+          </>
+        )}
 
         <Section title="Esta sección">
           <SelectInput
@@ -1650,24 +1670,40 @@ function SectionInspector({ sectionId }: { sectionId: string }) {
           />
           {secHtml && (
             <div style={{ marginTop: 10 }}>
-              <Textarea
+              <CampoHtml
                 label="HTML de esta sección"
                 value={sec.html ?? ''}
                 onChange={(v) => setSectionHtml(sectionId, { html: v })}
+                scripts={sec.htmlPermitirScripts === true}
+                onScripts={(c) => setSectionHtml(sectionId, { htmlPermitirScripts: c })}
                 placeholder={'<section style="padding:48px;text-align:center">  <h2>Mi sección</h2>  </section>'}
                 rows={10}
-                mono
               />
-              <div style={{ marginTop: 8 }}>
-                <ToggleRow
-                  label="Permitir scripts"
-                  checked={sec.htmlPermitirScripts === true}
-                  onChange={(c) => setSectionHtml(sectionId, { htmlPermitirScripts: c })}
+              <div style={{ marginTop: 10 }}>
+                <SelectInput
+                  label="Alto"
+                  value={altoAuto ? 'auto' : 'fijo'}
+                  options={[
+                    { value: 'auto', label: 'Automático (lo que mida tu HTML)' },
+                    { value: 'fijo', label: 'Fijo (lo marco yo)' },
+                  ]}
+                  onChange={(v) => setSectionHtml(sectionId, { htmlAlto: v as 'auto' | 'fijo' })}
                 />
               </div>
+              {altoAuto && (
+                <div style={{ marginTop: 8 }}>
+                  <NumInput
+                    label="Alto máximo (px · 0 = sin tope)"
+                    value={sec.htmlAltoMax ?? 0}
+                    onChange={(v) => setSectionHtml(sectionId, { htmlAltoMax: v > 0 ? Math.max(200, Math.min(20000, v)) : 0 })}
+                  />
+                </div>
+              )}
               <p style={{ fontSize: 11, color: 'var(--ed-text-3)', marginTop: 8, lineHeight: 1.45 }}>
-                Esta franja se sirve como tu HTML y sus bloques no se dibujan. No se borran:
-                vuelve a «Bloques del editor» y reaparecen. El alto lo sigues marcando abajo.
+                {altoAuto
+                  ? 'La sección crece lo que mida tu HTML, en computadora y en celular. Con alto máximo, lo que pase de ahí se desplaza dentro.'
+                  : 'La sección mide lo que marques en Tamaño; si tu HTML es más largo, se desplaza dentro.'}
+                {' '}Sus bloques del editor no se borran: vuelve a «Bloques del editor» y reaparecen.
               </p>
             </div>
           )}
@@ -1675,11 +1711,15 @@ function SectionInspector({ sectionId }: { sectionId: string }) {
 
         <Divider />
 
-        <Section title="Tamaño">
-          <NumInput label="Altura (px)" value={height} onChange={(v) => setSectionHeight(sectionId, Math.max(160, v))} />
-        </Section>
+        {!(secHtml && altoAuto) && (
+          <>
+            <Section title="Tamaño">
+              <NumInput label="Altura (px)" value={height} onChange={(v) => setSectionHeight(sectionId, Math.max(160, v))} />
+            </Section>
 
-        <Divider />
+            <Divider />
+          </>
+        )}
 
         <Section title="Fondo">
           <SelectInput
@@ -1718,6 +1758,91 @@ function SectionInspector({ sectionId }: { sectionId: string }) {
           La sección solo define el fondo y la altura. Para sombras, bordes o formas decorativas usa un <b style={{ color: '#9AA0A6' }}>Bloque de color</b> dentro de la sección.
         </div>
       </div>
+    </div>
+  )
+}
+
+const NL = String.fromCharCode(10)
+
+// Campo para pegar HTML (seccion o pagina completa). Ademas del texto: cargar un
+// archivo .html (un documento de miles de lineas se pega mal a mano), cuanto mide, y
+// encender los scripts solo cuando lo que se pega los trae — casi todo el HTML que
+// hace una IA los usa (Tailwind por CDN, animaciones) y sin ellos sale a medias.
+const botonSecundario: React.CSSProperties = {
+  flex: 1, padding: '7px 8px', borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit',
+  background: 'rgba(56,208,48,.12)', border: '1px solid rgba(56,208,48,.45)',
+  color: '#38D030', fontSize: 11, fontWeight: 700,
+}
+
+function CampoHtml({
+  label, value, onChange, scripts, onScripts, placeholder, rows, extra,
+}: {
+  label: string; value: string; onChange: (v: string) => void
+  scripts: boolean; onScripts: (c: boolean) => void
+  placeholder?: string; rows?: number
+  /** Un boton mas junto a "Cargar archivo" (p. ej. "Partir de mi diseño"). */
+  extra?: React.ReactNode
+}) {
+  const archivo = useRef<HTMLInputElement>(null)
+  const [encendidos, setEncendidos] = useState(false)
+
+  function poner(v: string) {
+    // Solo al pasar de "sin scripts" a "con scripts" (pegar o cargar): si despues los
+    // apaga a mano, editar no los vuelve a prender.
+    if (!scripts && !traeScripts(value) && traeScripts(v)) { onScripts(true); setEncendidos(true) }
+    onChange(v)
+  }
+
+  function cargar(f: File | undefined) {
+    if (!f) return
+    if (value.trim() && !confirm(`Vas a reemplazar el HTML actual por «${f.name}». ¿Seguimos?`)) return
+    const r = new FileReader()
+    r.onload = () => poner(String(r.result ?? ''))
+    r.readAsText(f)
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+        <button type="button" onClick={() => archivo.current?.click()} style={botonSecundario}>
+          Cargar archivo .html
+        </button>
+        {extra}
+      </div>
+      <input
+        ref={archivo}
+        type="file"
+        accept=".html,.htm,text/html"
+        style={{ display: 'none' }}
+        onChange={(e) => { cargar(e.target.files?.[0]); e.target.value = '' }}
+      />
+      <Textarea label={label} value={value} onChange={poner} placeholder={placeholder} rows={rows} mono />
+      {value.trim() && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+          <span style={{ fontSize: 10, color: 'var(--ed-text-3)' }}>{tamanoHtml(value)}</span>
+          <button
+            type="button"
+            onClick={() => { if (confirm('¿Borrar todo el HTML?')) onChange('') }}
+            style={{ background: 'none', border: 0, color: '#9AA0A6', fontSize: 10, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}
+          >
+            Vaciar
+          </button>
+        </div>
+      )}
+      <div style={{ marginTop: 8 }}>
+        <ToggleRow label="Permitir scripts" checked={scripts} onChange={(c) => { onScripts(c); setEncendidos(false) }} />
+      </div>
+      {scripts && encendidos && (
+        <p style={{ fontSize: 11, color: '#38D030', marginTop: 6, lineHeight: 1.4 }}>
+          Tu HTML trae scripts y los activé para que se vea completo. Siguen aislados del
+          resto de la página.
+        </p>
+      )}
+      {!scripts && traeScripts(value) && (
+        <p style={{ fontSize: 11, color: '#C99A3A', marginTop: 6, lineHeight: 1.4 }}>
+          Tu HTML trae scripts y están apagados: puede verse incompleto o vacío.
+        </p>
+      )}
     </div>
   )
 }

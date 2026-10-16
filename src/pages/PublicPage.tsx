@@ -1,4 +1,5 @@
 import { SeccionHtml } from '../components/shared/SeccionHtml'
+import { PaginaHtml, pageContainerShadow } from '../components/shared/PaginaHtml'
 import { useEffect, useState } from 'react'
 import { apiPublicLanding } from '../api/webhooks'
 import { registrarVisita } from '../lib/metricas'
@@ -83,18 +84,20 @@ export function LandingView({ config, signedUrls }: { config: LandingConfig; sig
   const cardShadow   = acotada && sombraActiva ? pageContainerShadow(pagina.sombraIntensidad ?? 60) : undefined
 
   // Pagina completa en HTML: el asesor trajo su propio documento, asi que se sirve tal
-  // cual y se ignora el lienzo. Va en un iframe aislado igual que el bloque de HTML:
-  // ocupa toda la pantalla pero no puede tocar nada de la app que lo contiene.
+  // cual y se ignora el lienzo (iframe aislado, ver PaginaHtml). Completa o acotada
+  // segun el ancho de la pagina, igual que una landing del lienzo.
   if (config.modo === 'html' && String(config.html ?? '').trim()) {
-    const permisos = ['allow-popups', 'allow-popups-to-escape-sandbox', 'allow-forms']
-    if (config.htmlPermitirScripts) permisos.push('allow-scripts')
     return (
-      <iframe
-        srcDoc={String(config.html)}
-        title={`Carta de presentación de ${config.slug}`}
-        sandbox={permisos.join(' ')}
-        style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', border: 0 }}
-      />
+      <div style={{ position: 'fixed', inset: 0 }}>
+        <PaginaHtml
+          html={String(config.html)}
+          scripts={config.htmlPermitirScripts === true}
+          pagina={pagina}
+          fondoUrl={pageBgUrl}
+          ancho={vw}
+          title={`Carta de presentación de ${config.slug}`}
+        />
+      </div>
     )
   }
 
@@ -136,6 +139,16 @@ export function LandingView({ config, signedUrls }: { config: LandingConfig; sig
           {config.secciones.map((sec) => {
             const sectionH = sec.altura?.escritorio ?? 580
             const fondoLayer = sectionFondoLayer(sec.fondo, signedUrls)
+            // Seccion entera en HTML: al ancho real (no escalada desde 900px) y con su
+            // propio alto, asi el HTML responsivo se ve como celular en el celular.
+            if (sec.modo === 'html') {
+              return (
+                <div key={sec.id} id={sec.id} style={{ position: 'relative', width: renderW, maxWidth: '100%', overflow: 'hidden' }}>
+                  <BackgroundLayer {...fondoLayer} />
+                  <SeccionHtml seccion={sec} />
+                </div>
+              )
+            }
             return (
               <div
                 key={sec.id}
@@ -154,9 +167,7 @@ export function LandingView({ config, signedUrls }: { config: LandingConfig; sig
                   transform: `scale(${scale})`, transformOrigin: 'top left',
                 }}>
                   <BackgroundLayer {...fondoLayer} />
-                  {/* Seccion entera en HTML: se sirve tal cual, sin dibujar sus elementos. */}
-                  {sec.modo === 'html' && <SeccionHtml seccion={sec} alto={sectionH} />}
-                  {sec.modo !== 'html' && sec.elementos
+                  {sec.elementos
                     .slice()
                     .sort((a, b) => a.geometria.escritorio.z - b.geometria.escritorio.z)
                     .map((el) => (
@@ -177,15 +188,6 @@ export function LandingView({ config, signedUrls }: { config: LandingConfig; sig
       </div>
     </div>
   )
-}
-
-// Elegant, intensity-scaled shadow for the landing card (acotada mode).
-function pageContainerShadow(intensidad: number): string {
-  const t = Math.max(0, Math.min(100, intensidad)) / 100
-  const y     = Math.round(8 + t * 24)         // 8..32
-  const blur  = Math.round(28 + t * 64)        // 28..92
-  const alpha = (0.18 + t * 0.42).toFixed(2)   // .18..0.60
-  return `0 ${y}px ${blur}px rgba(0,0,0,${alpha})`
 }
 
 // ── Loading ────────────────────────────────────────────────────────────────

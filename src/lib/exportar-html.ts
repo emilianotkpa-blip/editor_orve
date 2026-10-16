@@ -1,4 +1,5 @@
 import type { LandingConfig, LandingElemento } from '../types/landing'
+import { esDocumento } from './html-libre'
 
 // Convierte el lienzo a un documento HTML equivalente. No pretende ser perfecto:
 // es un PUNTO DE PARTIDA editable, con la misma geometria que ya tenias.
@@ -62,6 +63,14 @@ export function lienzoAHtml(config: LandingConfig, urls: Record<string, string> 
   const cuerpo = config.secciones.map((sec) => {
     const alto = sec.altura?.escritorio ?? 580
     const fondo = sec.fondo?.tipo === 'color' ? (sec.fondo.valor || '#0E1411') : '#0E1411'
+    // Seccion que ya es HTML: un fragmento entra tal cual; un documento completo no cabe
+    // dentro de otro, asi que va en un iframe con su propio alto.
+    const propio = sec.modo === 'html' ? String(sec.html ?? '') : ''
+    if (propio.trim()) {
+      return esDocumento(propio)
+        ? `  <iframe srcdoc="${esc(propio)}" style="display:block;width:100%;height:${alto}px;border:0"></iframe>`
+        : `  <section style="position:relative;width:100%;background:${fondo}">\n${propio}\n  </section>`
+    }
     const els = sec.elementos
       .slice()
       .sort((a, b) => (a.geometria.escritorio.z ?? 0) - (b.geometria.escritorio.z ?? 0))

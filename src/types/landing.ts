@@ -102,6 +102,13 @@ export interface Seccion {
   modo?: 'lienzo' | 'html'
   html?: string
   htmlPermitirScripts?: boolean
+  /**
+   * Alto de la franja en modo 'html'. 'auto' (por defecto): mide lo que mida el
+   * contenido. 'fijo': usa `altura.escritorio` y lo que sobre se desplaza dentro.
+   */
+  htmlAlto?: 'auto' | 'fijo'
+  /** Tope en px para 'auto' (0 o ausente = sin tope). Pasado el tope se desplaza dentro. */
+  htmlAltoMax?: number
 }
 
 export interface EstiloPagina {

@@ -53,6 +53,8 @@ function sanitizeConfig(raw: unknown): LandingConfig {
         modo:                s.modo ?? 'lienzo',
         html:                s.html,
         htmlPermitirScripts: s.htmlPermitirScripts ?? false,
+        htmlAlto:            s.htmlAlto,
+        htmlAltoMax:         s.htmlAltoMax,
         elementos: Array.isArray(s.elementos)
           ? s.elementos.map((el: Partial<LandingElemento>) => ({
               id:        el.id        ?? `el_${Math.random().toString(36).slice(2)}`,
@@ -206,7 +208,7 @@ interface LandingStore {
   setSectionHeight: (sectionId: string, height: number) => void
   setSectionFondo: (sectionId: string, fondo: Seccion['fondo']) => void
   /** Convierte una seccion en HTML libre, o la devuelve al lienzo. */
-  setSectionHtml: (sectionId: string, patch: Pick<Partial<Seccion>, 'modo' | 'html' | 'htmlPermitirScripts'>) => void
+  setSectionHtml: (sectionId: string, patch: Pick<Partial<Seccion>, 'modo' | 'html' | 'htmlPermitirScripts' | 'htmlAlto' | 'htmlAltoMax'>) => void
 
   moveLayer: (sectionId: string, elementId: string, dir: 'front' | 'back' | 'up' | 'down') => void
   reorderLayers: (sectionId: string, orderedIdsBottomToTop: string[]) => void
