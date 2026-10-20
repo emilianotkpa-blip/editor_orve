@@ -14,7 +14,7 @@ import { logoGeo, logoLimites, margenSeguro } from '../../lib/marca'
 import { PANEL, POP } from '../../lib/motion'
 import { lienzoAHtml } from '../../lib/exportar-html'
 import { traeScripts, tamanoHtml } from '../../lib/html-libre'
-import { contarIncrustadas, subirIncrustadas, aplicarReemplazos, kb, LIMITE_CONFIG } from '../../lib/html-imagenes'
+import { contarIncrustadas, subirIncrustadas, aplicarReemplazos, kb, bytesUtf8, LIMITE_HTML_BYTES } from '../../lib/html-imagenes'
 
 function newProyectoCard(): ProyectoCard {
   return {
@@ -1878,9 +1878,9 @@ function CampoHtml({
           {aviso}
         </p>
       )}
-      {!subiendo && value.length > LIMITE_CONFIG * 0.9 && (
+      {!subiendo && bytesUtf8(value) > LIMITE_HTML_BYTES && (
         <p style={{ fontSize: 11, color: '#E5484D', marginTop: 6, lineHeight: 1.4 }}>
-          Este HTML pesa {kb(value.length)} y hoy el máximo para guardar la landing es {kb(LIMITE_CONFIG)} en total: así no se va a poder guardar.
+          Este HTML pesa {kb(bytesUtf8(value))} y el máximo por página o sección es {kb(LIMITE_HTML_BYTES)}: así no se va a poder guardar.
         </p>
       )}
     </div>

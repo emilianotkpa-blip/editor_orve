@@ -11,6 +11,7 @@ import { sectionFondoLayer } from '../lib/sections'
 import { BackgroundLayer } from '../components/shared/BackgroundLayer'
 import { OrveLogo, DiamondMark } from '../components/shared/Brand'
 import { resolveSrc } from '../lib/images'
+import { hidratarHtml } from '../lib/html-imagenes'
 
 type Status = 'loading' | 'ready' | 'unavailable'
 
@@ -37,9 +38,12 @@ export function PublicPage({ slug }: { slug: string }) {
         // Las landings del formato viejo no traen `secciones`: no se pueden pintar y
         // antes reventaban en la cara del visitante. Se tratan como no disponibles.
         if (res.disponible && res.config && Array.isArray(res.config.secciones)) {
-          setConfig(res.config)
-          setSigned(res.signedUrls ?? {})
-          setStatus('ready')
+          // El HTML grande vive como archivo en el almacenamiento: se trae antes de pintar.
+          void hidratarHtml(res.config).then((c) => {
+            setConfig(c)
+            setSigned(res.signedUrls ?? {})
+            setStatus('ready')
+          })
         } else {
           setStatus('unavailable')
         }

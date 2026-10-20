@@ -109,6 +109,8 @@ export interface Seccion {
   htmlAlto?: 'auto' | 'fijo'
   /** Tope en px para 'auto' (0 o ausente = sin tope). Pasado el tope se desplaza dentro. */
   htmlAltoMax?: number
+  /** HTML grande guardado como archivo: "ruta#huella" en el almacenamiento (ver html-imagenes.ts). */
+  htmlRef?: string
 }
 
 export interface EstiloPagina {
@@ -140,6 +142,8 @@ export interface LandingConfig {
   html?: string
   /** Permite <script> dentro de ese documento. Aun asi va en iframe aislado. */
   htmlPermitirScripts?: boolean
+  /** HTML grande guardado como archivo: "ruta#huella" en el almacenamiento (ver html-imagenes.ts). */
+  htmlRef?: string
 }
 
 // ── Element factory ────────────────────────────────────────────────────────

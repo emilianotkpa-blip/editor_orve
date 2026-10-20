@@ -106,3 +106,101 @@ export async function sacarIncrustadasDeConfig(
   const cambio = html !== config.html || secciones.some((s, i) => s !== config.secciones[i])
   return { config: cambio ? { ...config, html, secciones } : config, subidas, fallidas }
 }
+
+// ── HTML grande como archivo en el almacenamiento ───────────────────────────
+/**
+ * El HTML que pasa de UMBRAL_HTML caracteres (pagina completa, seccion o bloque) no viaja dentro de
+ * la configuracion: se sube como archivo de texto al mismo almacenamiento de las fotos y la
+ * configuracion guarda solo `htmlRef` = "ruta#huella". Asi la configuracion queda chica (NocoDB topa
+ * en 100,000 caracteres) y el HTML puede pesar hasta LIMITE_HTML_BYTES.
+ * La huella evita volver a subir lo que no cambio. Las rutas son unicas por version, asi que el cache
+ * de un año del almacenamiento nunca sirve una version vieja.
+ */
+export const UMBRAL_HTML = 20000
+/** Tope por archivo del bucket 'landings' y del flujo de subida. */
+export const LIMITE_HTML_BYTES = 10 * 1024 * 1024
+
+export const bytesUtf8 = (t: string) => new TextEncoder().encode(t).length
+
+async function huella(t: string): Promise<string> {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t))
+  return Array.from(new Uint8Array(d)).slice(0, 8).map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+function base64Utf8(t: string): string {
+  const bytes = new TextEncoder().encode(t)
+  let bin = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  return btoa(bin)
+}
+
+const rutaDe = (ref?: string) => (ref || '').split('#')[0]
+const huellaDe = (ref?: string) => (ref || '').split('#')[1] || ''
+
+/**
+ * Prepara lo que se manda a guardar. Devuelve `local` (lo que queda en el editor: el HTML completo y su
+ * ref al dia) y `enviar` (sin el HTML grande, solo su ref).
+ */
+export async function separarHtmlGrande(
+  config: LandingConfig,
+  cuenta: { email: string; slug: string },
+): Promise<{ local: LandingConfig; enviar: LandingConfig } | { error: string }> {
+  // Una parte: devuelve [ref para el editor, html que viaja, ref que viaja].
+  const parte = async (html: string | undefined, ref: string | undefined): Promise<[string | undefined, string | undefined, string | undefined]> => {
+    const h = html || ''
+    // Sin HTML pero con ref: no se pudo leer al abrir; se conserva tal cual (no se borra nada).
+    if (!h && ref) return [ref, undefined, ref]
+    if (h.length <= UMBRAL_HTML) return [undefined, html, undefined]
+    if (bytesUtf8(h) > LIMITE_HTML_BYTES) throw new Error(`Tu HTML pesa ${kb(bytesUtf8(h))} y el máximo por página o sección es ${kb(LIMITE_HTML_BYTES)}.`)
+    const hu = await huella(h)
+    if (ref && huellaDe(ref) === hu) return [ref, undefined, ref]
+    const res = await apiUploadImage({ email: cuenta.email, slug: cuenta.slug, filename: 'pagina.txt', mime: 'text/plain', data: base64Utf8(h) })
+    if (!res.ok || !res.path) throw new Error(res.error || 'No se pudo guardar el HTML en el almacenamiento. Intenta de nuevo.')
+    const nuevo = res.path + '#' + hu
+    return [nuevo, undefined, nuevo]
+  }
+  try {
+    const [refP, htmlP, refPE] = await parte(config.html, config.htmlRef)
+    const local: LandingConfig = { ...config, htmlRef: refP, secciones: [] }
+    const enviar: LandingConfig = { ...config, html: htmlP, htmlRef: refPE, secciones: [] }
+    for (const s of config.secciones) {
+      const [refS, htmlS, refSE] = await parte(s.html, s.htmlRef)
+      const elsL = [], elsE = []
+      for (const el of s.elementos) {
+        if (el.tipo !== 'html') { elsL.push(el); elsE.push(el); continue }
+        const [refE, htmlE, refEE] = await parte(el.contenido.html as string | undefined, (el.contenido.htmlRef as string) || undefined)
+        elsL.push({ ...el, contenido: { ...el.contenido, htmlRef: refE ?? '' } })
+        elsE.push({ ...el, contenido: { ...el.contenido, html: htmlE ?? '', htmlRef: refEE ?? '' } })
+      }
+      local.secciones.push({ ...s, htmlRef: refS, elementos: elsL })
+      enviar.secciones.push({ ...s, html: htmlS, htmlRef: refSE, elementos: elsE })
+    }
+    return { local, enviar }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'No se pudo guardar el HTML.' }
+  }
+}
+
+/** Al abrir (editor o pagina publica): trae del almacenamiento el HTML que se guardo como archivo. */
+export async function hidratarHtml(config: LandingConfig): Promise<LandingConfig> {
+  const traer = async (html: string | undefined, ref: string | undefined) => {
+    if ((html && html.length) || !ref) return html
+    try {
+      const r = await fetch(resolveSrc(rutaDe(ref)))
+      return r.ok ? await r.text() : html
+    } catch {
+      return html
+    }
+  }
+  const tiene = config.htmlRef || config.secciones.some((s) => s.htmlRef || s.elementos.some((e) => e.tipo === 'html' && e.contenido.htmlRef))
+  if (!tiene) return config
+  const html = await traer(config.html, config.htmlRef)
+  const secciones = await Promise.all(config.secciones.map(async (s) => ({
+    ...s,
+    html: await traer(s.html, s.htmlRef),
+    elementos: await Promise.all(s.elementos.map(async (e) => (e.tipo === 'html' && e.contenido.htmlRef
+      ? { ...e, contenido: { ...e.contenido, html: (await traer(e.contenido.html as string, e.contenido.htmlRef as string)) ?? '' } }
+      : e))),
+  })))
+  return { ...config, html, secciones }
+}

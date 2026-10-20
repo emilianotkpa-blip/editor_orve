@@ -5,7 +5,7 @@ import { apiLoadLanding, apiSaveLanding, apiSignedUrls } from '../api/webhooks'
 import { isDisplayableUrl } from '../lib/images'
 import { softSlugify, STAGE_W } from '../lib/layout'
 import { getBloque } from '../lib/bloques'
-import { sacarIncrustadasDeConfig, contarIncrustadas, kb, LIMITE_CONFIG } from '../lib/html-imagenes'
+import { sacarIncrustadasDeConfig, contarIncrustadas, kb, LIMITE_CONFIG, separarHtmlGrande, hidratarHtml } from '../lib/html-imagenes'
 
 // Collect every storage path referenced by image / gallery elements that still
 // needs signing (i.e. not already an http/blob/data URL).
@@ -56,6 +56,7 @@ function sanitizeConfig(raw: unknown): LandingConfig {
         htmlPermitirScripts: s.htmlPermitirScripts ?? false,
         htmlAlto:            s.htmlAlto,
         htmlAltoMax:         s.htmlAltoMax,
+        htmlRef:             s.htmlRef,
         elementos: Array.isArray(s.elementos)
           ? s.elementos.map((el: Partial<LandingElemento>) => ({
               id:        el.id        ?? `el_${Math.random().toString(36).slice(2)}`,
@@ -83,6 +84,7 @@ function sanitizeConfig(raw: unknown): LandingConfig {
     modo:                r.modo ?? 'lienzo',
     html:                r.html,
     htmlPermitirScripts: r.htmlPermitirScripts ?? false,
+    htmlRef:             r.htmlRef,
   }
 }
 
@@ -180,7 +182,7 @@ interface LandingStore {
   setSlug: (slug: string) => void
   setPagina: (patch: Partial<NonNullable<LandingConfig['pagina']>>) => void
   /** Modo de la landing: lienzo de siempre, o documento HTML propio. */
-  setModoPagina: (patch: Pick<Partial<LandingConfig>, 'modo' | 'html' | 'htmlPermitirScripts'>) => void
+  setModoPagina: (patch: Pick<Partial<LandingConfig>, 'modo' | 'html' | 'htmlPermitirScripts' | 'htmlRef'>) => void
   mergeSignedUrls: (map: Record<string, string>) => void
   resolveSignedUrls: () => Promise<void>
   showToast: (type: 'success' | 'error', message: string) => void
@@ -209,7 +211,7 @@ interface LandingStore {
   setSectionHeight: (sectionId: string, height: number) => void
   setSectionFondo: (sectionId: string, fondo: Seccion['fondo']) => void
   /** Convierte una seccion en HTML libre, o la devuelve al lienzo. */
-  setSectionHtml: (sectionId: string, patch: Pick<Partial<Seccion>, 'modo' | 'html' | 'htmlPermitirScripts' | 'htmlAlto' | 'htmlAltoMax'>) => void
+  setSectionHtml: (sectionId: string, patch: Pick<Partial<Seccion>, 'modo' | 'html' | 'htmlPermitirScripts' | 'htmlAlto' | 'htmlAltoMax' | 'htmlRef'>) => void
 
   moveLayer: (sectionId: string, elementId: string, dir: 'front' | 'back' | 'up' | 'down') => void
   reorderLayers: (sectionId: string, orderedIdsBottomToTop: string[]) => void
@@ -237,6 +239,11 @@ export const useLandingStore = create<LandingStore>((set, get) => {
       if (get().config === config) set({ config: r.config })
       config = r.config
     }
+    // El HTML grande se guarda como archivo; a NocoDB solo va su ref.
+    const sep = await separarHtmlGrande(config, { email, slug })
+    if ('error' in sep) { get().showToast('error', sep.error); return null }
+    if (get().config === config) set({ config: sep.local })
+    config = sep.enviar
     const tam = JSON.stringify(config).length
     if (tam > LIMITE_CONFIG) {
       const { cuantas } = contarIncrustadas(JSON.stringify(config))
@@ -388,8 +395,10 @@ export const useLandingStore = create<LandingStore>((set, get) => {
 
   setModoPagina: (patch) => {
     record('modoPagina')
+    // Si cambia el HTML, la ref al archivo guardado ya no vale (al guardar se sube la version nueva).
+    const p = 'html' in patch ? { ...patch, htmlRef: undefined } : patch
     set((state) => ({
-      config: { ...state.config, ...patch },
+      config: { ...state.config, ...p },
       isDirty: true,
       saveStatus: 'unsaved' as const,
     }))
@@ -474,7 +483,8 @@ export const useLandingStore = create<LandingStore>((set, get) => {
             elementos: s.elementos.map((el) =>
               el.id !== elementId ? el : {
                 ...el,
-                contenido: { ...el.contenido, ...content } as LandingElemento['contenido'],
+                // Si cambia el HTML de un bloque, su ref al archivo guardado ya no vale.
+                contenido: { ...el.contenido, ...content, ...('html' in content ? { htmlRef: '' } : {}) } as LandingElemento['contenido'],
               }
             ),
           }
@@ -866,10 +876,11 @@ export const useLandingStore = create<LandingStore>((set, get) => {
 
   setSectionHtml: (sectionId, patch) => {
     record('secHtml:' + sectionId)
+    const p = 'html' in patch ? { ...patch, htmlRef: undefined } : patch
     set((state) => ({
       config: {
         ...state.config,
-        secciones: state.config.secciones.map((s) => (s.id !== sectionId ? s : { ...s, ...patch })),
+        secciones: state.config.secciones.map((s) => (s.id !== sectionId ? s : { ...s, ...p })),
       },
       isDirty: true,
       saveStatus: 'unsaved' as const,
@@ -921,6 +932,8 @@ export const useLandingStore = create<LandingStore>((set, get) => {
           typeof res.config === 'string' ? JSON.parse(res.config) : res.config
         )
         set({ config: safe, activeSectionId: safe.secciones[0]?.id ?? null, isLoading: false, saveStatus: 'saved', isDirty: false, past: [], future: [] })
+        // El HTML grande vive como archivo: se trae aparte y se pone en su lugar sin marcar cambios.
+        void hidratarHtml(safe).then((h) => { if (h !== safe && get().config === safe) set({ config: h }) })
       } else {
         const slug = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '-')
         const fresh = { ...DEFAULT_CONFIG, slug }
