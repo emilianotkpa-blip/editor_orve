@@ -5,6 +5,7 @@ import { apiLoadLanding, apiSaveLanding, apiSignedUrls } from '../api/webhooks'
 import { isDisplayableUrl } from '../lib/images'
 import { softSlugify, STAGE_W } from '../lib/layout'
 import { getBloque } from '../lib/bloques'
+import { sacarIncrustadasDeConfig, contarIncrustadas, kb, LIMITE_CONFIG } from '../lib/html-imagenes'
 
 // Collect every storage path referenced by image / gallery elements that still
 // needs signing (i.e. not already an http/blob/data URL).
@@ -222,6 +223,31 @@ interface LandingStore {
 }
 
 export const useLandingStore = create<LandingStore>((set, get) => {
+  /**
+   * Antes de guardar o publicar: sube las imagenes que sigan incrustadas en algun HTML (data:image…)
+   * y revisa que la configuracion quepa en NocoDB (LIMITE_CONFIG caracteres). Si no cabe, lo dice
+   * claro en vez de dejar que el servidor falle y el editor culpe a "la conexion".
+   */
+  async function prepararGuardado(email: string): Promise<LandingConfig | null> {
+    let config = get().config
+    const slug = config.slug || (email.split('@')[0] || 'asesor').toLowerCase().replace(/[^a-z0-9]/g, '-')
+    const r = await sacarIncrustadasDeConfig(config, { email, slug })
+    if (r.config !== config) {
+      // Se reemplaza en lo que haya AHORA en el editor solo si no cambio mientras subia.
+      if (get().config === config) set({ config: r.config })
+      config = r.config
+    }
+    const tam = JSON.stringify(config).length
+    if (tam > LIMITE_CONFIG) {
+      const { cuantas } = contarIncrustadas(JSON.stringify(config))
+      get().showToast('error', `Tu landing pesa ${kb(tam)} y el máximo para guardar es ${kb(LIMITE_CONFIG)}. `
+        + (cuantas ? `Trae ${cuantas} imagen(es) dentro del código que no se pudieron subir.` : 'Recorta el HTML o súbelo por secciones.'))
+      return null
+    }
+    return config
+  }
+
+
   // Snapshot the CURRENT config into the past stack before a mutation.
   // `key` coalesces continuous edits (typing, sliders, drags) into one step.
   function record(key = '') {
@@ -908,10 +934,12 @@ export const useLandingStore = create<LandingStore>((set, get) => {
   },
 
   saveLanding: async () => {
-    const { email, config } = get()
+    const { email } = get()
     if (!email) return false
     set({ isSaving: true, saveStatus: 'saving' })
     try {
+      const config = await prepararGuardado(email)
+      if (!config) { set({ isSaving: false, saveStatus: 'error' }); return false }
       const res = await apiSaveLanding(email, config)
       if (res && res.ok) {
         set({ isSaving: false, isDirty: false, saveStatus: 'saved' })
@@ -932,10 +960,13 @@ export const useLandingStore = create<LandingStore>((set, get) => {
     const { email } = get()
     if (!email) return false
     const prev = get().config.publicada
-    // optimistic: mark as published in the config we send + store
-    const config = { ...get().config, publicada: true }
-    set({ config, isPublishing: true, isSaving: true, saveStatus: 'saving' })
+    set({ isPublishing: true, isSaving: true, saveStatus: 'saving' })
     try {
+      const lista = await prepararGuardado(email)
+      if (!lista) { set({ isPublishing: false, isSaving: false, saveStatus: 'error' }); return false }
+      // optimistic: mark as published in the config we send + store
+      const config = { ...lista, publicada: true }
+      set({ config })
       const res = await apiSaveLanding(email, config)
       if (res && res.ok) {
         set({ isPublishing: false, isSaving: false, isDirty: false, saveStatus: 'saved' })

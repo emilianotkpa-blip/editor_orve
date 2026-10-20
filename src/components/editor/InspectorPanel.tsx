@@ -14,6 +14,7 @@ import { logoGeo, logoLimites, margenSeguro } from '../../lib/marca'
 import { PANEL, POP } from '../../lib/motion'
 import { lienzoAHtml } from '../../lib/exportar-html'
 import { traeScripts, tamanoHtml } from '../../lib/html-libre'
+import { contarIncrustadas, subirIncrustadas, aplicarReemplazos, kb, LIMITE_CONFIG } from '../../lib/html-imagenes'
 
 function newProyectoCard(): ProyectoCard {
   return {
@@ -1785,12 +1786,36 @@ function CampoHtml({
 }) {
   const archivo = useRef<HTMLInputElement>(null)
   const [encendidos, setEncendidos] = useState(false)
+  const { email, config } = useLandingStore()
+  const slug = config.slug || (email.split('@')[0] || 'asesor').toLowerCase().replace(/[^a-z0-9]/g, '-')
+  // Imagenes metidas en el codigo (data:image…): se suben solas y queda su enlace.
+  const [subiendo, setSubiendo] = useState<{ hechas: number; total: number } | null>(null)
+  const [aviso, setAviso] = useState<string | null>(null)
+  const ultimo = useRef(value)
+  ultimo.current = value
+
+  async function subirImagenes(v: string) {
+    const { cuantas, bytes } = contarIncrustadas(v)
+    if (!cuantas || subiendo || !email) return
+    setAviso(null)
+    setSubiendo({ hechas: 0, total: cuantas })
+    const r = await subirIncrustadas(v, { email, slug }, (hechas, total) => setSubiendo({ hechas, total }))
+    // Sobre el texto MAS RECIENTE: pudo seguir escribiendo mientras subia.
+    const nuevo = aplicarReemplazos(ultimo.current, r.reemplazos)
+    if (r.reemplazos.size) onChange(nuevo)
+    setSubiendo(null)
+    setAviso(r.reemplazos.size
+      ? `Tu HTML traía ${r.reemplazos.size} imagen(es) dentro del código (${kb(bytes)}). Las subí y dejé su enlace: ahora pesa ${kb(nuevo.length)}.`
+        + (r.fallidas ? ` ${r.fallidas} no se pudo subir; intenta guardar de nuevo.` : '')
+      : 'No pude subir las imágenes que vienen dentro del código. Intenta de nuevo o súbelas como archivo.')
+  }
 
   function poner(v: string) {
     // Solo al pasar de "sin scripts" a "con scripts" (pegar o cargar): si despues los
     // apaga a mano, editar no los vuelve a prender.
     if (!scripts && !traeScripts(value) && traeScripts(v)) { onScripts(true); setEncendidos(true) }
     onChange(v)
+    if (contarIncrustadas(v).cuantas) void subirImagenes(v)
   }
 
   function cargar(f: File | undefined) {
@@ -1841,6 +1866,21 @@ function CampoHtml({
       {!scripts && traeScripts(value) && (
         <p style={{ fontSize: 11, color: '#C99A3A', marginTop: 6, lineHeight: 1.4 }}>
           Tu HTML trae scripts y están apagados: puede verse incompleto o vacío.
+        </p>
+      )}
+      {subiendo && (
+        <p style={{ fontSize: 11, color: '#38D030', marginTop: 6, lineHeight: 1.4 }}>
+          Subiendo las imágenes que vienen dentro del código… {subiendo.hechas} de {subiendo.total}
+        </p>
+      )}
+      {aviso && !subiendo && (
+        <p style={{ fontSize: 11, color: aviso.startsWith('No pude') ? '#C99A3A' : '#38D030', marginTop: 6, lineHeight: 1.4 }}>
+          {aviso}
+        </p>
+      )}
+      {!subiendo && value.length > LIMITE_CONFIG * 0.9 && (
+        <p style={{ fontSize: 11, color: '#E5484D', marginTop: 6, lineHeight: 1.4 }}>
+          Este HTML pesa {kb(value.length)} y hoy el máximo para guardar la landing es {kb(LIMITE_CONFIG)} en total: así no se va a poder guardar.
         </p>
       )}
     </div>

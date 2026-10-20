@@ -45,7 +45,12 @@ export async function apiSaveLanding(email: string, config: LandingConfig): Prom
     headers,
     body: JSON.stringify({ email, config }),
   })
-  return res.json()
+  // Si el servidor contesta algo que no es JSON (un error del flujo), antes res.json() reventaba y
+  // el editor decia "revisa tu conexion" aunque la conexion estuviera bien.
+  let cuerpo: { ok: boolean; accion?: string; error?: string } | null = null
+  try { cuerpo = await res.json() } catch { cuerpo = null }
+  if (cuerpo && typeof cuerpo === 'object') return cuerpo
+  return { ok: false, error: `El servidor no pudo guardar (error ${res.status}). Intenta de nuevo en un momento.` }
 }
 
 // Check whether a slug is free (not taken by a different advisor).
