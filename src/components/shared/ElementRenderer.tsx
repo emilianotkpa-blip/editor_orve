@@ -360,10 +360,11 @@ function BotonEl({ element, interactive }: { element: LandingElemento; interacti
 
   const action = resolveButtonAction(contenido)
   // Que se toco: 'whatsapp · Escríbeme'. Con esto el panel puede decir por donde
-  // contactan de verdad, no solo cuanta gente entro.
+  // contactan de verdad, no solo cuanta gente entro. Los demás botones van como 'boton'
+  // ('clic' es entrar y salir antes de 10 s, 30-oct-2026).
   const queEs = `${(contenido.accion as string) || 'url'} · ${label}`.slice(0, 120)
   const esContacto = ['whatsapp', 'email'].indexOf((contenido.accion as string) || '') >= 0
-  const anotar = () => registrar(slug, esContacto ? 'contacto' : 'clic', queEs)
+  const anotar = () => registrar(slug, esContacto ? 'contacto' : 'boton', queEs)
 
   if (action.href) {
     return (

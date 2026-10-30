@@ -16,7 +16,9 @@
 const BASE = 'https://diamante-de-las-ventas-n8n.l2uxzq.easypanel.host/webhook'
 const KEY = 'orve-dvd-2026-xK9m'
 
-export type EventoLanding = 'visita' | 'video' | 'clic' | 'material' | 'contacto' | 'lead'
+// Desde el 30-oct-2026: 'visita' = bajó por la página y se quedó 10 s o más; 'clic' = entró y se fue antes;
+// 'boton' = tocó un botón que no es WhatsApp ni correo (antes eso se llamaba 'clic').
+export type EventoLanding = 'visita' | 'video' | 'clic' | 'boton' | 'material' | 'contacto' | 'lead'
 
 function almacen(): Storage | null {
   try { return window.sessionStorage } catch { return null }
@@ -63,18 +65,64 @@ export function registrar(slug: string | null, evento: EventoLanding, detalle = 
   }
 }
 
-/** Una visita por pestaña y slug: recargar no infla el número. */
-export function registrarVisita(slug: string | null) {
-  if (!slug) return
-  const clave = `dvd_visita_${slug}`
+/**
+ * Visita o clic (ORVE, 30-oct-2026). Una VISITA es alguien que bajó por la página y se quedó 10 s
+ * o más con la pestaña a la vista; un CLIC es alguien que entró y se fue antes (menos de 10 s o sin
+ * bajar). Así una visita es una persona que de verdad vio la landing.
+ *  - La visita se manda en cuanto se cumple, con la persona todavía ahí: no se pierde.
+ *  - El clic se manda al irse sin cumplirla (pestaña oculta o cerrada). Si regresa y la cumple,
+ *    cuenta también la visita.
+ *  - Si la página no tiene para dónde bajar, basta con el tiempo.
+ *  - Una de cada una por pestaña y slug: recargar no infla los números.
+ * Devuelve la función que quita los escuchas.
+ */
+export function medirVisita(slug: string | null): () => void {
+  if (!slug || typeof window === 'undefined') return () => {}
   const st = almacen()
-  try {
-    if (st?.getItem(clave)) return
-    st?.setItem(clave, '1')
-  } catch {
-    /* sin almacenamiento se registra igual; peor es no medir */
+  const claveVisita = `dvd_visita10_${slug}`
+  const claveClic = `dvd_clic10_${slug}`
+  const ya = (k: string) => { try { return !!st?.getItem(k) } catch { return false } }
+  const anotar = (k: string) => { try { st?.setItem(k, '1') } catch { /* se registra igual */ } }
+  if (ya(claveVisita)) return () => {}
+
+  const MS_MINIMO = 10_000
+  let visible = 0
+  let desde = document.visibilityState === 'visible' ? Date.now() : 0
+  let bajo = false
+  let clicMandado = ya(claveClic)
+  const tiempo = () => visible + (desde ? Date.now() - desde : 0)
+  const hayParaBajar = () => document.documentElement.scrollHeight - window.innerHeight > 40
+
+  const revisar = () => {
+    if ((bajo || !hayParaBajar()) && tiempo() >= MS_MINIMO) {
+      anotar(claveVisita)
+      registrar(slug, 'visita')
+      quitar()
+    }
   }
-  registrar(slug, 'visita')
+  const alBajar = () => {
+    if ((window.scrollY || document.documentElement.scrollTop) > 40) { bajo = true; revisar() }
+  }
+  const alIrse = () => {
+    if (desde) { visible += Date.now() - desde; desde = 0 }
+    if (!clicMandado) { clicMandado = true; anotar(claveClic); registrar(slug, 'clic') }
+  }
+  const alCambiarVista = () => {
+    if (document.visibilityState === 'hidden') alIrse()
+    else if (!desde) desde = Date.now()
+  }
+
+  const reloj = window.setInterval(revisar, 1000)
+  window.addEventListener('scroll', alBajar, { passive: true })
+  document.addEventListener('visibilitychange', alCambiarVista)
+  window.addEventListener('pagehide', alIrse)
+  function quitar() {
+    window.clearInterval(reloj)
+    window.removeEventListener('scroll', alBajar)
+    document.removeEventListener('visibilitychange', alCambiarVista)
+    window.removeEventListener('pagehide', alIrse)
+  }
+  return quitar
 }
 
 /** Igual, pero para cosas que solo tiene sentido contar una vez (un video, p. ej.). */
